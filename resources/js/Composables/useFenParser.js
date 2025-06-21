@@ -28,13 +28,34 @@ export function useFenParser() {
 
             const [position, activeColor, castling, enPassant, halfmove, fullmove] = parts
 
+            // Aktive Farbe validieren
+            if (!['w', 'b'].includes(activeColor)) {
+                throw new Error(`Ungültige aktive Farbe: ${activeColor}`)
+            }
+
+            // En-Passant validieren
+            if (!validateEnPassant(enPassant)) {
+                throw new Error(`Ungültiges En-Passant-Feld: ${enPassant}`)
+            }
+
+            // Bewegungszähler validieren
+            const halfmoveInt = parseInt(halfmove)
+            const fullmoveInt = parseInt(fullmove)
+
+            if (isNaN(halfmoveInt) || halfmoveInt < 0) {
+                throw new Error('Ungültiger Halbzug-Zähler')
+            }
+            if (isNaN(fullmoveInt) || fullmoveInt < 1) {
+                throw new Error('Ungültiger Vollzug-Zähler')
+            }
+
             return {
                 position: parsePosition(position),
                 activeColor: activeColor === 'w' ? PLAYER_COLORS.WHITE : PLAYER_COLORS.BLACK,
                 castlingRights: parseCastlingRights(castling),
                 enPassantSquare: enPassant === '-' ? null : enPassant,
-                halfmoveClock: parseInt(halfmove) || 0,
-                fullmoveNumber: parseInt(fullmove) || 1,
+                halfmoveClock: halfmoveInt,
+                fullmoveNumber: fullmoveInt,
                 originalFen: fenString
             }
         } catch (error) {
@@ -89,6 +110,11 @@ export function useFenParser() {
         return board
     }
 
+    const validateEnPassant = (enPassant) => {
+        if (enPassant === '-') return true
+        return /^[a-h][36]$/.test(enPassant) // Nur Reihe 3 oder 6 erlaubt
+    }
+
     /**
      * Parst Rochade-Rechte
      * @param {string} castlingString - z.B. "KQkq" oder "-"
@@ -102,6 +128,10 @@ export function useFenParser() {
                 blackKingside: false,
                 blackQueenside: false
             }
+        }
+
+        if (!/^[KQkq]*$/.test(castlingString)) {
+            throw new Error(`Ungültige Rochade-Zeichen: ${castlingString}`)
         }
 
         return {
@@ -143,7 +173,9 @@ export function useFenParser() {
             // En passant
             const enPassantPart = enPassantSquare || '-'
 
-            return `${positionPart} ${activeColorPart} ${castlingPart} ${enPassantPart} ${halfmoveClock} ${fullmoveNumber}`
+            const FEN = `${positionPart} ${activeColorPart} ${castlingPart} ${enPassantPart} ${halfmoveClock} ${fullmoveNumber}`
+            // console.log('FEN:', FEN)
+            return FEN
         } catch (error) {
             console.error('FEN Generation Error:', error)
             return INITIAL_FEN
@@ -156,6 +188,18 @@ export function useFenParser() {
      * @returns {string} Position part of FEN
      */
     const generatePositionString = (board) => {
+        // Board-Struktur validieren
+        if (!Array.isArray(board) || board.length !== 8) {
+            throw new Error('Board muss ein 8x8 Array sein')
+        }
+
+        // Jede Reihe validieren
+        for (let i = 0; i < 8; i++) {
+            if (!Array.isArray(board[i]) || board[i].length !== 8) {
+                throw new Error(`Reihe ${i + 1} muss 8 Felder haben`)
+            }
+        }
+
         const ranks = []
 
         for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
@@ -205,15 +249,31 @@ export function useFenParser() {
         return castling || '-'
     }
 
+    const parsedFen = computed(() => parseFen())
+
     // Computed Properties
     const parsedPosition = computed(() => {
-        const parsed = parseFen()
-        return parsed?.position ?? null
+        return parsedFen.value?.position ?? null
     })
 
     const activePlayer = computed(() => {
-        const parsed = parseFen()
-        return parsed ? parsed.activeColor : PLAYER_COLORS.WHITE
+        return parsedFen.value?.activeColor ?? PLAYER_COLORS.WHITE
+    })
+
+    const castlingRights = computed(() => {
+        return parsedFen.value?.castlingRights ?? null
+    })
+
+    const enPassantTarget = computed(() => {
+        return parsedFen.value?.enPassantSquare ?? null
+    })
+
+    const halfmoveClock = computed(() => {
+        return parsedFen.value?.halfmoveClock ?? 0
+    })
+
+    const fullmoveNumber = computed(() => {
+        return parsedFen.value?.fullmoveNumber ?? 1
     })
 
     // Public API
@@ -225,6 +285,10 @@ export function useFenParser() {
         // Computed
         parsedPosition,
         activePlayer,
+        castlingRights,
+        enPassantTarget,
+        halfmoveClock,
+        fullmoveNumber,
 
         // Methods
         parseFen,

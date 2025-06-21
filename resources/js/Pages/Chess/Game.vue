@@ -9,6 +9,7 @@ import PlayerInfo from '@/Components/PlayerInfo.vue'
 import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
+import { useSounds } from "../../Composables/useSounds.js";
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 
 // Props (falls über Inertia.js übergeben)
@@ -54,6 +55,18 @@ const gameStartTime = ref(null)
 const lastMoveTime = ref(null)
 const notifications = ref([])
 const soundEnabled = ref(true)
+
+const {
+    isSoundEnabled,
+    currentVolume,
+    preloadAllSounds,
+    playMoveSound,
+    playGameSound,
+    playUISound,
+    toggleSound,
+    setVolume,
+    testSound
+} = useSounds()
 
 // ===== COMPUTED PROPERTIES =====
 
@@ -133,17 +146,39 @@ const handlePieceClick = (pieceData) => {
  */
 const handleMove = (moveData) => {
     console.log('Move made:', moveData)
+    console.log('FEN:', gameStore.currentFen)
     lastMoveTime.value = new Date()
 
-    // Sound abspielen
-    if (soundEnabled.value) {
-        playMoveSound(moveData)
+    // ⭐ MOVE-DETAILS AUS GAMESTORE HOLEN
+    const lastMoveRecord = gameStore.lastMove
+
+    gameStore.checkForCheck(gameState)
+    gameStore.checkForCheckmate(gameState)
+    gameStore.checkForStalemate(gameState)
+
+    const enhancedMoveData = {
+        ...moveData,
+        // ✅ KORREKTE CAPTURE-ERKENNUNG: Nur aktueller Zug, nicht alle geschlagenen Figuren
+        isCapture: lastMoveRecord?.moveType === 'capture' ||
+            lastMoveRecord?.moveType === 'enpassant' ||
+            moveData.capture || // Fallback für direkte moveData
+            (lastMoveRecord?.capturedPiece && true),
+        isCastling: lastMoveRecord?.moveType === 'castle',
+        isPromotion: lastMoveRecord?.moveType === 'promotion',
+        isCheck: gameStore.isInCheck,
+        isCheckmate: gameStore.gameStatus === 'CHECKMATE',
+        moveType: lastMoveRecord?.moveType
     }
+
+    console.log('🔍 Enhanced Move Data:', enhancedMoveData)
+
+    // Sound abspielen mit erweiterten Daten
+    playMoveSound(enhancedMoveData)
 
     // Engine-Antwort auslösen (falls KI-Spiel)
     if (props.gameMode === 'standard' && shouldTriggerEngineMove()) {
         setTimeout(() => {
-            engineStore.makeMove()
+            // engineStore.makeMove()
         }, 500)
     }
 }
@@ -169,7 +204,7 @@ const handleCheck = (checkData) => {
     })
 
     if (soundEnabled.value) {
-        playSound('check')
+        playGameSound('check')
     }
 }
 
@@ -183,7 +218,7 @@ const handleCheckmate = (checkmateData) => {
     })
 
     if (soundEnabled.value) {
-        playSound('checkmate')
+        playGameSound('checkmate')
     }
 }
 
@@ -197,7 +232,7 @@ const handleStalemate = (stalemateData) => {
     })
 
     if (soundEnabled.value) {
-        playSound('stalemate')
+        playGameSound('stalemate')
     }
 }
 
@@ -228,7 +263,7 @@ const handleUndoMove = () => {
         })
 
         if (soundEnabled.value) {
-            playSound('undo')
+            playGameSound('undo')
         }
     }
 }
@@ -277,15 +312,6 @@ const toggleFullscreen = () => {
         document.exitFullscreen()
         isFullscreen.value = false
     }
-}
-
-const toggleSound = () => {
-    soundEnabled.value = !soundEnabled.value
-    addNotification({
-        type: 'info',
-        message: `Sound ${soundEnabled.value ? 'aktiviert' : 'deaktiviert'}`,
-        duration: 2000
-    })
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -360,24 +386,6 @@ const handleGameStatusNotification = (status) => {
 }
 
 /**
- * Sound-System
- */
-const playMoveSound = (moveData) => {
-    if (moveData.capture) {
-        playSound('capture')
-    } else if (moveData.castling) {
-        playSound('castling')
-    } else {
-        playSound('move')
-    }
-}
-
-const playSound = (soundType) => {
-    // TODO: Implementierung mit Howler.js
-    console.log(`Playing sound: ${soundType}`)
-}
-
-/**
  * Keyboard-Shortcuts
  */
 const handleKeydown = (event) => {
@@ -443,6 +451,13 @@ onMounted(async () => {
         console.log('Figuren-Bilder erfolgreich vorgeladen')
     } catch (error) {
         console.warn('Preloading der Figuren-Bilder fehlgeschlagen:', error)
+    }
+
+    try {
+        preloadAllSounds()
+        console.log('🎵 Sound-System erfolgreich initialisiert')
+    } catch (error) {
+        console.warn('🔇 Sound-System Initialisierung fehlgeschlagen:', error)
     }
 
     // Willkommens-Benachrichtigung
@@ -628,9 +643,17 @@ onUnmounted(() => {
                                 <span class="info-label">Koordinaten:</span>
                                 <span class="info-value">{{ boardStore.settings.showCoordinates ? 'An' : 'Aus' }}</span>
                             </div>
-                            <div class="info-item" v-if="boardStore.mousePosition.square">
-                                <span class="info-label">Feld:</span>
-                                <span class="info-value">{{ boardStore.mousePosition.square }}</span>
+                            <div class="info-item">
+                                <span class="info-label">FEN:</span>
+                                <div class="info-value fen-display">
+                                    <div
+                                        v-for="(segment, index) in gameStore.currentFEN.split('/')"
+                                        :key="index"
+                                        class="fen-segment"
+                                    >
+                                        {{ segment }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -651,7 +674,7 @@ onUnmounted(() => {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #9f9f9f 0%, #444444 100%);
 }
 
 .game-layout--fullscreen {
@@ -845,8 +868,6 @@ onUnmounted(() => {
 .board-area {
     flex-shrink: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .game-sidebar {
@@ -1016,4 +1037,23 @@ onUnmounted(() => {
     height: 100vh;
     box-sizing: border-box;
 }
+
+.fen-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.2;
+}
+
+.fen-segment {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    word-break: break-all;
+    max-width: 100%;
+}
+
 </style>

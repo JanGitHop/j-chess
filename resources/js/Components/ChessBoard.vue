@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { useBoardStore } from '@/Stores/boardStore.js'
-import { useGameStore } from '@/Stores/gameStore.js'
-import { usePieceStore } from '@/Stores/pieceStore.js'
-import { useDragAndDrop } from '@/Composables/useDragAndDrop.js'
-import { squareToIndices } from '@/Utils/chessUtils.js'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {useBoardStore} from '@/Stores/boardStore.js'
+import {useGameStore} from '@/Stores/gameStore.js'
+import {usePieceStore} from '@/Stores/pieceStore.js'
+import {useChessLogic} from '@/Composables/useChessLogic.js';
+import {useDragAndDrop} from '@/Composables/useDragAndDrop.js'
+import {squareToIndices, isLightSquare, getCSSPattern } from '@/Utils/chessUtils.js'
 import ChessPiece from '@/Components/ChessPiece.vue'
 
 const props = defineProps({
@@ -61,6 +62,8 @@ const emit = defineEmits([
 const boardStore = useBoardStore()
 const gameStore = useGameStore()
 const pieceStore = usePieceStore()
+
+const chessLogic = useChessLogic()
 
 // Drag & Drop
 const { isDragActive, dragData, findSquareFromElement } = useDragAndDrop()
@@ -122,8 +125,23 @@ const boardSize = computed(() => {
 })
 
 const squareSize = computed(() => Math.floor(boardSize.value / 8))
-const coordinateSpace = computed(() => currentShowCoordinates.value ? 20 : 0)
-const totalSize = computed(() => boardSize.value + (coordinateSpace.value * 2))
+const coordinateSpace = computed(() => 0)
+const totalSize = computed(() => boardSize.value)
+
+// Hilfsfunktionen für Koordinaten-Anzeige
+const shouldShowFileCoordinate = (file, rank) => {
+    if (!currentShowCoordinates.value) return false
+    // Zeige Files in der untersten Reihe (rank 1 für weiß, rank 8 für schwarz)
+    const bottomRank = props.orientation === 'white' ? 1 : 8
+    return rank === bottomRank
+}
+
+const shouldShowRankCoordinate = (file, rank) => {
+    if (!currentShowCoordinates.value) return false
+    // Zeige Ranks in der rechtesten Spalte (h für weiß, a für schwarz)
+    const rightFile = props.orientation === 'white' ? 'h' : 'a'
+    return file === rightFile
+}
 
 const squareColors = computed(() => {
     const theme = boardStore.currentTheme
@@ -150,12 +168,6 @@ const coordinateStyle = computed(() => ({
 }))
 
 // ===== SQUARE & PIECE LOGIC =====
-
-const isLightSquare = (file, rank) => {
-    const fileIndex = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].indexOf(file)
-    const rankIndex = [8, 7, 6, 5, 4, 3, 2, 1].indexOf(rank)
-    return (fileIndex + rankIndex) % 2 === 0
-}
 
 /**
  * Figur auf einem Feld abrufen mit korrekter pieceStore Integration
@@ -318,7 +330,12 @@ const handleDragStart = (event, pieceInfo, square) => {
     gameStore.draggedFrom = square
     gameStore.isDragging = true
 
-    gameStore.generateLegalMoves(square)
+    gameStore.legalMoves = chessLogic.generateLegalMovesForSquare(
+        square,
+        gameStore.currentBoard,
+        gameStore.currentPlayer,
+        gameStore.gameState
+    )
 
     emit('dragStart', event, pieceInfo, square)
 }
@@ -372,22 +389,6 @@ const handleDragOver = (event) => {
     event.preventDefault()
 }
 
-// ===== HELPER FUNCTIONS =====
-
-const getCSSPattern = (patternClass) => {
-    const patterns = {
-        'wood-light': 'linear-gradient(45deg, #DEB887 25%, transparent 25%), linear-gradient(-45deg, #DEB887 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #D2B48C 75%), linear-gradient(-45deg, transparent 75%, #D2B48C 75%)',
-        'wood-dark': 'linear-gradient(45deg, #8B4513 25%, transparent 25%), linear-gradient(-45deg, #8B4513 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #A0522D 75%), linear-gradient(-45deg, transparent 75%, #A0522D 75%)',
-        'marble-light': 'radial-gradient(circle at 25% 25%, #FFFACD 0%, #F5F5DC 50%, #FFFACD 100%)',
-        'marble-dark': 'radial-gradient(circle at 25% 25%, #778899 0%, #696969 50%, #778899 100%)',
-        'leather-light': 'radial-gradient(circle at 50% 50%, #DEB887 0%, #D2B48C 100%)',
-        'leather-dark': 'radial-gradient(circle at 50% 50%, #A0522D 0%, #8B4513 100%)',
-        'stone-light': 'linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 100%)',
-        'stone-dark': 'linear-gradient(135deg, #808080 0%, #696969 100%)'
-    }
-    return patterns[patternClass] || null
-}
-
 // ===== LIFECYCLE =====
 
 const updateWindowSize = () => {
@@ -418,22 +419,6 @@ onUnmounted(() => {
         class="chess-board-container"
         :style="boardStyle"
     >
-        <!-- Koordinaten oben (falls aktiviert) -->
-        <div
-            v-if="currentShowCoordinates"
-            class="coordinates coordinates--top"
-            :style="{ height: `${coordinateSpace}px`, ...coordinateStyle }"
-        >
-            <div
-                v-for="file in files"
-                :key="`top-${file}`"
-                class="coordinate-label"
-                :style="{ width: `${squareSize}px` }"
-            >
-                {{ file }}
-            </div>
-        </div>
-
         <!-- Hauptbrett-Bereich -->
         <div class="board-content" :style="{ width: `${boardSize}px`, height: `${boardSize}px` }">
             <!-- Koordinaten links (falls aktiviert) -->
@@ -468,14 +453,14 @@ onUnmounted(() => {
                         :key="`${file}${rank}`"
                         class="board-square"
                         :class="{
-                            'square--light': isLightSquare(file, rank),
-                            'square--dark': !isLightSquare(file, rank),
-                            'square--selected': gameStore.selectedSquare === `${file}${rank}`,
-                            'square--legal-move': props.showLegalMoves && gameStore.legalMoves.includes(`${file}${rank}`),
-                            'square--last-move': props.highlightLastMove && gameStore.lastMove &&
-                                (gameStore.lastMove.from === `${file}${rank}` || gameStore.lastMove.to === `${file}${rank}`),
-                            'square--check': gameStore.isInCheck && gameStore.checkingPieces.includes(`${file}${rank}`)
-                        }"
+                        'square--light': isLightSquare(file, rank),
+                        'square--dark': !isLightSquare(file, rank),
+                        'square--selected': gameStore.selectedSquare === `${file}${rank}`,
+                        'square--legal-move': props.showLegalMoves && gameStore.legalMoves.includes(`${file}${rank}`),
+                        'square--last-move': props.highlightLastMove && gameStore.lastMove &&
+                            (gameStore.lastMove.from === `${file}${rank}` || gameStore.lastMove.to === `${file}${rank}`),
+                        'square--check': gameStore.isInCheck && gameStore.checkingPieces.includes(`${file}${rank}`)
+                    }"
                         :style="getSquareStyle(file, rank)"
                         @click="handleSquareClick(file, rank)"
                         @drop="handleDrop($event, file, rank)"
@@ -501,47 +486,33 @@ onUnmounted(() => {
                             v-if="props.showLegalMoves && gameStore.legalMoves.includes(`${file}${rank}`) && !getPieceOnSquare(file, rank)"
                             class="legal-move-indicator"
                             :style="{
-                                width: `${squareSize * 0.3}px`,
-                                height: `${squareSize * 0.3}px`,
-                                borderRadius: '50%',
-                                backgroundColor: 'rgba(76, 175, 80, 0.6)',
-                                position: 'absolute'
-                            }"
+                            width: `${squareSize * 0.3}px`,
+                            height: `${squareSize * 0.3}px`,
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                            position: 'absolute'
+                        }"
                         />
+
+                        <!-- File-Koordinate (untere Reihe) -->
+                        <div
+                            v-if="shouldShowFileCoordinate(file, rank)"
+                            class="coordinate coordinate--file"
+                            :style="coordinateStyle"
+                        >
+                            {{ file }}
+                        </div>
+
+                        <!-- Rank-Koordinate (rechte Spalte) -->
+                        <div
+                            v-if="shouldShowRankCoordinate(file, rank)"
+                            class="coordinate coordinate--rank"
+                            :style="coordinateStyle"
+                        >
+                            {{ rank }}
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Koordinaten rechts (falls aktiviert) -->
-            <div
-                v-if="currentShowCoordinates"
-                class="coordinates coordinates--right"
-                :style="{ width: `${coordinateSpace}px`, ...coordinateStyle }"
-            >
-                <div
-                    v-for="rank in ranks"
-                    :key="`right-${rank}`"
-                    class="coordinate-label"
-                    :style="{ height: `${squareSize}px` }"
-                >
-                    {{ rank }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Koordinaten unten (falls aktiviert) -->
-        <div
-            v-if="currentShowCoordinates"
-            class="coordinates coordinates--bottom"
-            :style="{ height: `${coordinateSpace}px`, ...coordinateStyle }"
-        >
-            <div
-                v-for="file in files"
-                :key="`bottom-${file}`"
-                class="coordinate-label"
-                :style="{ width: `${squareSize}px` }"
-            >
-                {{ file }}
             </div>
         </div>
     </div>
@@ -577,45 +548,28 @@ onUnmounted(() => {
     flex-shrink: 0;
 }
 
-.board-square--draggable {
-    cursor: grab;
-}
-
-.board-square--dragging {
-    cursor: grabbing;
-}
-
-.board-square--drag-over {
-    background-color: rgba(76, 175, 80, 0.3) !important;
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
-}
-
 .board-square:hover {
     filter: brightness(1.1);
 }
 
-.coordinates {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.coordinate {
+    position: absolute;
+    font-size: 12px;
+    font-weight: bold;
     user-select: none;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-.coordinates--top,
-.coordinates--bottom {
-    flex-direction: row;
+.coordinate--file {
+    bottom: 2px;
+    left: 4px;
 }
 
-.coordinates--left,
-.coordinates--right {
-    flex-direction: column;
-}
-
-.coordinate-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.coordinate--rank {
+    top: 2px;
+    right: 4px;
 }
 
 .legal-move-indicator {

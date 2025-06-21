@@ -175,3 +175,25 @@ export const printBoard = (board) => {
     }
     console.log()
 }
+
+// Board-Utility Funktionen
+export const isLightSquare = (file, rank) => {
+    const fileIndex = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].indexOf(file)
+    const rankIndex = [8, 7, 6, 5, 4, 3, 2, 1].indexOf(rank)
+    return (fileIndex + rankIndex) % 2 === 0
+}
+
+// Theme-Utility Funktionen
+export const getCSSPattern = (patternClass) => {
+    const patterns = {
+        'wood-light': 'linear-gradient(45deg, #DEB887 25%, transparent 25%), linear-gradient(-45deg, #DEB887 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #D2B48C 75%), linear-gradient(-45deg, transparent 75%, #D2B48C 75%)',
+        'wood-dark': 'linear-gradient(45deg, #8B4513 25%, transparent 25%), linear-gradient(-45deg, #8B4513 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #A0522D 75%), linear-gradient(-45deg, transparent 75%, #A0522D 75%)',
+        'marble-light': 'radial-gradient(circle at 25% 25%, #FFFACD 0%, #F5F5DC 50%, #FFFACD 100%)',
+        'marble-dark': 'radial-gradient(circle at 25% 25%, #778899 0%, #696969 50%, #778899 100%)',
+        'leather-light': 'radial-gradient(circle at 50% 50%, #DEB887 0%, #D2B48C 100%)',
+        'leather-dark': 'radial-gradient(circle at 50% 50%, #A0522D 0%, #8B4513 100%)',
+        'stone-light': 'linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 100%)',
+        'stone-dark': 'linear-gradient(135deg, #808080 0%, #696969 100%)'
+    }
+    return patterns[patternClass] || null
+}

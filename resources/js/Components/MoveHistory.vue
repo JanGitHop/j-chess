@@ -225,15 +225,6 @@ const generatePGN = () => {
 
     return pgn.trim()
 }
-
-// ===== WATCHERS =====
-
-// Auto-scroll zu neuem Zug
-watch(currentMoveIndex, (newIndex) => {
-    if (newIndex >= 0 && props.highlightCurrentMove) {
-        scrollToMove(newIndex)
-    }
-})
 </script>
 
 <template>
@@ -356,6 +347,8 @@ watch(currentMoveIndex, (newIndex) => {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
+
 .move-history {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col;
     min-height: 200px;

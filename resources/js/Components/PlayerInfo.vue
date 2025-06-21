@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { usePieceStore } from '@/Stores/pieceStore.js'
 
 const props = defineProps({
     gameState: {
@@ -32,6 +33,9 @@ const props = defineProps({
         default: () => ({ name: 'Schwarz', rating: null, avatar: null })
     }
 })
+
+// ✅ PIECE STORE FÜR SVG-BILDER
+const pieceStore = usePieceStore()
 
 // Timer State
 const whiteTime = ref(props.timeControl.initialTime || 0)
@@ -119,7 +123,7 @@ const getTimeStyle = (timeInSeconds) => {
 }
 
 /**
- * Material-Vorteil berechnen
+ * ✅ MATERIAL-VORTEIL BERECHNEN (KORRIGIERT)
  */
 const calculateMaterialAdvantage = (color) => {
     if (!props.gameState.capturedPieces) return 0
@@ -133,24 +137,58 @@ const calculateMaterialAdvantage = (color) => {
     const oppCaptured = props.gameState.capturedPieces[color] || []
 
     const myValue = myCaptured.reduce((sum, piece) => {
-        return sum + (pieceValues[piece.type.toLowerCase()] || 0)
+        // ✅ KORREKTE BEHANDLUNG VON PIECE-OBJEKTEN
+        const pieceType = typeof piece === 'string' ? piece : piece.type
+        return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
     }, 0)
 
     const oppValue = oppCaptured.reduce((sum, piece) => {
-        return sum + (pieceValues[piece.type.toLowerCase()] || 0)
+        // ✅ KORREKTE BEHANDLUNG VON PIECE-OBJEKTEN
+        const pieceType = typeof piece === 'string' ? piece : piece.type
+        return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
     }, 0)
 
     return myValue - oppValue
 }
 
 /**
- * Figuren-Symbol für UI
+ * ✅ FEN-NOTATION FÜR FIGUR BESTIMMEN
  */
-const getPieceSymbol = (piece) => {
-    const symbols = {
-        'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'
+const getPieceFenNotation = (piece) => {
+    // Falls es schon ein String ist (FEN-Notation)
+    if (typeof piece === 'string') {
+        return piece
     }
-    return symbols[piece.type.toLowerCase()] || piece.type
+
+    // Falls es ein Objekt ist { type: 'p', color: 'black' }
+    if (piece && piece.type && piece.color) {
+        const type = piece.type.toLowerCase()
+        return piece.color === 'white' ? type.toUpperCase() : type
+    }
+
+    // ✅ NEU: Falls es ein Objekt mit 'notation' Property ist
+    if (piece && piece.notation) {
+        return piece.notation
+    }
+
+    console.warn('Unbekannte Figur-Struktur:', piece)
+    return null
+}
+
+/**
+ * ✅ SVG-URL FÜR FIGUR ABRUFEN
+ */
+const getPieceImageUrl = (piece) => {
+    const fenNotation = getPieceFenNotation(piece)
+    return fenNotation ? pieceStore.getPieceImageUrl(fenNotation) : null
+}
+
+/**
+ * ✅ FIGUREN-NAME FÜR TOOLTIP
+ */
+const getPieceName = (piece) => {
+    const fenNotation = getPieceFenNotation(piece)
+    return fenNotation ? pieceStore.getPieceName(fenNotation) : 'Unbekannt'
 }
 
 /**
@@ -342,18 +380,22 @@ $: watchGameActive && updateTimerState()
                 </div>
             </div>
 
-            <!-- Geschlagene Figuren -->
+            <!-- ✅ GESCHLAGENE FIGUREN MIT SVG-BILDERN -->
             <div v-if="showCapturedPieces && players.black.capturedPieces.length > 0" class="captured-pieces">
-                <div class="captured-label">Geschlagen:</div>
-                <div class="captured-list">
-                    <span
+                <div class="captured-pieces-title">Geschlagen:</div>
+                <div class="captured-pieces-list">
+                    <div
                         v-for="(piece, index) in players.black.capturedPieces"
                         :key="index"
                         class="captured-piece"
-                        :title="`${piece.color} ${piece.type}`"
+                        :title="getPieceName(piece)"
                     >
-                        {{ getPieceSymbol(piece) }}
-                    </span>
+                        <img
+                            :src="getPieceImageUrl(piece)"
+                            :alt="getPieceName(piece)"
+                            class="captured-piece-image"
+                        />
+                    </div>
                 </div>
                 <div v-if="players.black.materialAdvantage > 0" class="material-advantage">
                     +{{ players.black.materialAdvantage }}
@@ -399,6 +441,41 @@ $: watchGameActive && updateTimerState()
             class="player-card player-card--white"
             :style="getPlayerStyle('white')"
         >
+            <!-- ✅ GESCHLAGENE FIGUREN MIT SVG-BILDERN -->
+            <div v-if="showCapturedPieces && players.white.capturedPieces.length > 0" class="captured-pieces">
+                <div class="captured-pieces-title">Geschlagen:</div>
+                <div class="captured-pieces-list">
+                    <div
+                        v-for="(piece, index) in players.white.capturedPieces"
+                        :key="index"
+                        class="captured-piece"
+                        :title="getPieceName(piece)"
+                    >
+                        <img
+                            :src="getPieceImageUrl(piece)"
+                            :alt="getPieceName(piece)"
+                            class="captured-piece-image"
+                        />
+                    </div>
+                </div>
+                <div v-if="players.white.materialAdvantage > 0" class="material-advantage">
+                    +{{ players.white.materialAdvantage }}
+                </div>
+            </div>
+
+            <!-- Timer -->
+            <div v-if="timeControl.type !== 'unlimited'" class="player-timer">
+                <div
+                    class="time-display"
+                    :style="getTimeStyle(players.white.time)"
+                >
+                    {{ formatTime(players.white.time) }}
+                </div>
+                <div v-if="timeControl.increment" class="increment-info">
+                    +{{ timeControl.increment }}s
+                </div>
+            </div>
+
             <div class="player-header">
                 <div class="player-avatar">
                     <img
@@ -437,37 +514,6 @@ $: watchGameActive && updateTimerState()
                     >
                         ⚠️
                     </div>
-                </div>
-            </div>
-
-            <!-- Timer -->
-            <div v-if="timeControl.type !== 'unlimited'" class="player-timer">
-                <div
-                    class="time-display"
-                    :style="getTimeStyle(players.white.time)"
-                >
-                    {{ formatTime(players.white.time) }}
-                </div>
-                <div v-if="timeControl.increment" class="increment-info">
-                    +{{ timeControl.increment }}s
-                </div>
-            </div>
-
-            <!-- Geschlagene Figuren -->
-            <div v-if="showCapturedPieces && players.white.capturedPieces.length > 0" class="captured-pieces">
-                <div class="captured-label">Geschlagen:</div>
-                <div class="captured-list">
-                    <span
-                        v-for="(piece, index) in players.white.capturedPieces"
-                        :key="index"
-                        class="captured-piece"
-                        :title="`${piece.color} ${piece.type}`"
-                    >
-                        {{ getPieceSymbol(piece) }}
-                    </span>
-                </div>
-                <div v-if="players.white.materialAdvantage > 0" class="material-advantage">
-                    +{{ players.white.materialAdvantage }}
                 </div>
             </div>
         </div>
@@ -641,40 +687,116 @@ $: watchGameActive && updateTimerState()
     font-weight: 500;
 }
 
+/* ✅ STYLES FÜR GESCHLAGENE FIGUREN */
 .captured-pieces {
+    border-radius: 0.5rem;
+    padding: 0.75rem;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
-    padding-top: 0.75rem;
 }
 
-.captured-label {
-    font-size: 0.75rem;
-    color: #718096;
+/* Spezifische Hintergründe für Weiß und Schwarz */
+.player-card--white .captured-pieces {
+    background: rgba(248, 248, 248, 0.95); /* Helles Grau für weißen Spieler */
+}
+
+.player-card--black .captured-pieces {
+    background: rgba(60, 60, 60, 0.95); /* Dunkles Anthrazit für schwarzen Spieler */
+}
+
+.captured-pieces-title {
+    font-size: 0.875rem;
     font-weight: 500;
-    margin-bottom: 0.25rem;
-}
-
-.captured-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
     margin-bottom: 0.5rem;
 }
 
-.captured-piece {
-    font-size: 1.25rem;
-    opacity: 0.8;
-    transition: opacity 200ms ease;
+/* Titel-Farbe je nach Spieler anpassen */
+.player-card--white .captured-pieces-title {
+    color: #4a5568; /* Dunkler Text auf hellem Hintergrund */
 }
 
+.player-card--black .captured-pieces-title {
+    color: #e2e8f0; /* Heller Text auf dunklem Hintergrund */
+}
+
+.captured-pieces-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-bottom: 0.5rem;
+    /* Negative Margin um eventuelle versteckte Abstände zu eliminieren */
+    margin-left: -2px;
+    margin-top: -1px;
+}
+
+.captured-piece {
+    width: 30px;  /* Leicht kleiner für kompaktere Darstellung */
+    height: 30px;
+    /* Negative Margins für Überlappung - die Figuren rücken näher zusammen */
+    margin-right: -2px;
+    margin-bottom: -1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    cursor: default;
+    transition: all 200ms ease;
+    box-sizing: border-box;
+    /* Z-Index für saubere Überlappung */
+    position: relative;
+    z-index: 1;
+}
+
+/* Hover bekommt höheren z-index */
 .captured-piece:hover {
-    opacity: 1;
+    transform: scale(1.2);
+    z-index: 10;
+}
+
+.captured-piece-image {
+    width: 26px;  /* Angepasst an den kleineren Container */
+    height: 26px;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+/* Spezifische Hover-Effekte nur für sehr subtile Hintergründe */
+.player-card--white .captured-piece:hover {
+    background: rgba(255, 255, 255, 0.3); /* Sehr transparent */
+    border-radius: 0.25rem; /* Nur bei Hover sichtbar */
+}
+
+.player-card--black .captured-piece:hover {
+    background: rgba(80, 80, 80, 0.3); /* Sehr transparent */
+    border-radius: 0.25rem; /* Nur bei Hover sichtbar */
+}
+
+.captured-piece-image {
+    width: 28px;  /* Größer: von 18px auf 28px - fast die ganze Container-Größe */
+    height: 28px; /* Größer: von 18px auf 28px */
+    object-fit: contain;
+    /* Bessere Darstellung der SVGs */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+/* Optional: Leichte Aufhellung der SVGs auf dunklem Hintergrund */
+.player-card--black .captured-piece-image {
+    filter: brightness(1.1) contrast(1.1);
 }
 
 .material-advantage {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #38a169;
+    color: #48bb78;
     text-align: right;
+}
+
+/* Material-Advantage Text auf dunklem Hintergrund anpassen */
+.player-card--black .material-advantage {
+    color: #68d391; /* Helleres Grün für bessere Lesbarkeit */
 }
 
 /* Animationen */
@@ -735,7 +857,13 @@ $: watchGameActive && updateTimerState()
     }
 
     .captured-piece {
-        font-size: 1rem;
+        width: 20px;
+        height: 20px;
+    }
+
+    .captured-piece-image {
+        width: 16px;
+        height: 16px;
     }
 }
 

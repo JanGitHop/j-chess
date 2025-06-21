@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useFenParser } from '@/Composables/useFenParser.js'
+import { useChessLogic } from '@/Composables/useChessLogic.js'
 import {
     INITIAL_FEN,
     PLAYER_COLORS,
@@ -17,14 +18,17 @@ import {
 import {
     squareToIndices,
     indicesToSquare,
-    cloneBoard
+    cloneBoard,
+    getPieceColor
 } from '@/Utils/chessUtils.js'
 
 export const useGameStore = defineStore('game', () => {
+    const chessLogic = useChessLogic()
+
     // ===== STATE =====
     const gameId = ref(null)
     const gameStatus = ref(GAME_STATUS.WAITING)
-    const gameMode = ref('standard') // Neu hinzugefügt
+    const gameMode = ref('standard')
     const whitePlayer = ref(null)
     const blackPlayer = ref(null)
 
@@ -33,6 +37,10 @@ export const useGameStore = defineStore('game', () => {
         currentFen,
         parsedPosition,
         activePlayer,
+        castlingRights,
+        enPassantTarget,
+        halfmoveClock,
+        fullmoveNumber,
         parseFen,
         generateFen,
         setFen,
@@ -51,6 +59,7 @@ export const useGameStore = defineStore('game', () => {
     const isDragging = ref(false)
 
     // Game mechanics
+    const redoStack = ref([])
     const isInCheck = ref(false)
     const checkingPieces = ref([])
     const capturedPieces = ref({
@@ -67,37 +76,22 @@ export const useGameStore = defineStore('game', () => {
         return parsedPosition.value || []
     })
 
-    /**
-     * Spieler am Zug
-     */
     const currentPlayer = computed(() => {
         return activePlayer.value
     })
 
-    /**
-     * Ist das Spiel aktiv?
-     */
     const isGameActive = computed(() => {
         return [GAME_STATUS.ACTIVE, GAME_STATUS.CHECK].includes(gameStatus.value)
     })
 
-    /**
-     * Kann der aktuelle Spieler ziehen?
-     */
     const canCurrentPlayerMove = computed(() => {
         return isGameActive.value && legalMoves.value.length > 0
     })
 
-    /**
-     * Ist ein Feld ausgewählt?
-     */
     const hasSelection = computed(() => {
         return selectedSquare.value !== null
     })
 
-    /**
-     * Figur auf dem ausgewählten Feld
-     */
     const selectedPiece = computed(() => {
         if (!hasSelection.value || !currentBoard.value.length) return null
 
@@ -107,12 +101,49 @@ export const useGameStore = defineStore('game', () => {
         return currentBoard.value[indices.rankIndex][indices.fileIndex]
     })
 
-    /**
-     * Gehört die ausgewählte Figur dem aktuellen Spieler?
-     */
     const isSelectedPieceOwnedByCurrentPlayer = computed(() => {
         return selectedPiece.value && isPieceOwnedByPlayer(selectedPiece.value, currentPlayer.value)
     })
+
+    const gameState = computed(() => ({
+        // Core game data
+        currentPlayer: activePlayer.value,
+        enPassantSquare: enPassantTarget.value,
+        castlingRights: castlingRights.value,
+        board: currentBoard.value,
+        halfmoveClock: halfmoveClock.value,
+        fullmoveNumber: fullmoveNumber.value,
+
+        // Additional derived properties
+        isGameActive: isGameActive.value,
+        isInCheck: isInCheck.value,
+        checkingPieces: checkingPieces.value,
+        selectedSquare: selectedSquare.value,
+        legalMoves: legalMoves.value,
+
+        // Game metadata
+        gameId: gameId.value,
+        gameStatus: gameStatus.value,
+        gameMode: gameMode.value,
+        whitePlayer: whitePlayer.value,
+        blackPlayer: blackPlayer.value,
+
+        // Move data
+        moveHistory: moveHistory.value,
+        lastMove: lastMove.value,
+        capturedPieces: capturedPieces.value
+    }))
+
+    const getCurrentGameState = () => {
+        return { ...gameState.value }
+    }
+
+    const createGameStateSnapshot = (overrides = {}) => {
+        return {
+            ...getCurrentGameState(),
+            ...overrides
+        }
+    }
 
     // ===== ACTIONS =====
 
@@ -240,7 +271,12 @@ export const useGameStore = defineStore('game', () => {
                 // Nur eigene Figuren auswählen
                 if (isPieceOwnedByPlayer(piece, currentPlayer.value)) {
                     selectedSquare.value = square
-                    generateLegalMoves(square)
+                    legalMoves.value = chessLogic.generateLegalMovesForSquare(
+                        square,
+                        currentBoard.value,
+                        currentPlayer.value,
+                        gameState.value
+                    )
                     return true
                 }
                 return false
@@ -255,7 +291,12 @@ export const useGameStore = defineStore('game', () => {
             // Fall 3: Andere eigene Figur angeklickt
             if (!isEmpty(piece) && isPieceOwnedByPlayer(piece, currentPlayer.value)) {
                 selectedSquare.value = square
-                generateLegalMoves(square)
+                legalMoves.value = chessLogic.generateLegalMovesForSquare(
+                    square,
+                    currentBoard.value,
+                    currentPlayer.value,
+                    gameState.value
+                )
                 return true
             }
 
@@ -272,261 +313,82 @@ export const useGameStore = defineStore('game', () => {
         }
     }
 
-    /**
-     * Legale Züge für ein Feld generieren (Basis-Implementierung)
-     * @param {string} square
-     */
-    const generateLegalMoves = (square) => {
-        if (!isGameActive.value) {
-            legalMoves.value = []
-            return
-        }
+    // Neue Funktion für Schach-Erkennung:
+    const checkForCheck = () => {
+        const kingSquare = chessLogic.findKing(currentBoard.value, currentPlayer.value)
+        if (!kingSquare) return false
 
-        const indices = squareToIndices(square)
-        if (!indices || !currentBoard.value.length) {
-            legalMoves.value = []
-            return
-        }
+        const gameState = getCurrentGameState()
 
-        const piece = currentBoard.value[indices.rankIndex][indices.fileIndex]
-        if (isEmpty(piece) || !isPieceOwnedByPlayer(piece, currentPlayer.value)) {
-            legalMoves.value = []
-            return
-        }
+        const isUnderAttack = chessLogic.isInCheck(currentBoard.value, currentPlayer.value === 'white' ? 'black' : 'white', gameState)
 
-        // Basis-Zug-Generierung (sehr vereinfacht!)
-        const moves = []
-        const pieceType = piece.toLowerCase()
+        if (isUnderAttack !== isInCheck.value) {
+            isInCheck.value = isUnderAttack
 
-        switch (pieceType) {
-            case 'p': // Bauer
-                moves.push(...generatePawnMoves(square, piece))
-                break
-            case 'r': // Turm
-                moves.push(...generateRookMoves(square))
-                break
-            case 'n': // Springer
-                moves.push(...generateKnightMoves(square))
-                break
-            case 'b': // Läufer
-                moves.push(...generateBishopMoves(square))
-                break
-            case 'q': // Dame
-                moves.push(...generateQueenMoves(square))
-                break
-            case 'k': // König
-                moves.push(...generateKingMoves(square))
-                break
-        }
-
-        // Nur valide Felder behalten
-        legalMoves.value = moves.filter(move => {
-            const moveSquare = typeof move === 'string' ? move : move.to
-            const targetIndices = squareToIndices(moveSquare)
-            return targetIndices && isSquareValid(moveSquare)
-        })
-
-        console.log(`Legale Züge für ${piece} auf ${square}:`, legalMoves.value)
-    }
-
-    /**
-     * Basis Bauer-Züge (vereinfacht)
-     */
-    const generatePawnMoves = (square, piece) => {
-        const moves = []
-        const isWhite = isWhitePiece(piece)
-        const indices = squareToIndices(square)
-
-        if (!indices) return moves
-
-        const direction = isWhite ? -1 : 1 // Weiß geht "nach oben" (kleinere rank-Indizes)
-        const startRank = isWhite ? 6 : 1 // Startpositionen für Doppelzug
-
-        // Ein Feld vorwärts
-        const oneForward = indicesToSquare(indices.fileIndex, indices.rankIndex + direction)
-        if (oneForward && isEmpty(currentBoard.value[indices.rankIndex + direction]?.[indices.fileIndex])) {
-            moves.push(oneForward)
-
-            // Zwei Felder vorwärts vom Startfeld
-            if (indices.rankIndex === startRank) {
-                const twoForward = indicesToSquare(indices.fileIndex, indices.rankIndex + (direction * 2))
-                if (twoForward && isEmpty(currentBoard.value[indices.rankIndex + (direction * 2)]?.[indices.fileIndex])) {
-                    moves.push(twoForward)
-                }
-            }
-        }
-
-        // Schlagen diagonal
-        for (const fileOffset of [-1, 1]) {
-            const captureSquare = indicesToSquare(indices.fileIndex + fileOffset, indices.rankIndex + direction)
-            if (captureSquare) {
-                const targetPiece = currentBoard.value[indices.rankIndex + direction]?.[indices.fileIndex + fileOffset]
-                if (targetPiece && !isEmpty(targetPiece) && !isPieceOwnedByPlayer(targetPiece, currentPlayer.value)) {
-                    moves.push(captureSquare)
-                }
-            }
-        }
-
-        return moves
-    }
-
-    /**
-     * Basis Springer-Züge
-     */
-    const generateKnightMoves = (square) => {
-        const moves = []
-        const indices = squareToIndices(square)
-
-        if (!indices) return moves
-
-        const knightMoves = [
-            [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-            [1, -2], [1, 2], [2, -1], [2, 1]
-        ]
-
-        for (const [fileOffset, rankOffset] of knightMoves) {
-            const targetSquare = indicesToSquare(
-                indices.fileIndex + fileOffset,
-                indices.rankIndex + rankOffset
-            )
-
-            if (targetSquare && isValidTarget(targetSquare)) {
-                moves.push(targetSquare)
-            }
-        }
-
-        return moves
-    }
-
-    /**
-     * Basis König-Züge
-     */
-    const generateKingMoves = (square) => {
-        const moves = []
-        const indices = squareToIndices(square)
-
-        if (!indices) return moves
-
-        for (let fileOffset = -1; fileOffset <= 1; fileOffset++) {
-            for (let rankOffset = -1; rankOffset <= 1; rankOffset++) {
-                if (fileOffset === 0 && rankOffset === 0) continue
-
-                const targetSquare = indicesToSquare(
-                    indices.fileIndex + fileOffset,
-                    indices.rankIndex + rankOffset
+            if (isUnderAttack) {
+                checkingPieces.value = chessLogic.getAttackingPieces(
+                    kingSquare,
+                    currentPlayer.value === 'white' ? 'black' : 'white',
+                    currentBoard.value,
+                    gameState.value
                 )
-
-                if (targetSquare && isValidTarget(targetSquare)) {
-                    moves.push(targetSquare)
-                }
+                gameStatus.value = GAME_STATUS.CHECK
+            } else {
+                checkingPieces.value = []
+                gameStatus.value = GAME_STATUS.ACTIVE
             }
         }
 
-        return moves
+        return isUnderAttack
     }
 
-    /**
-     * Basis Turm-Züge
-     */
-    const generateRookMoves = (square) => {
-        const moves = []
-        const indices = squareToIndices(square)
-        if (!indices) return moves
-
-        // Horizontal und vertikal
-        const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]
-
-        for (const [fileDir, rankDir] of directions) {
-            for (let distance = 1; distance < 8; distance++) {
-                const targetSquare = indicesToSquare(
-                    indices.fileIndex + (fileDir * distance),
-                    indices.rankIndex + (rankDir * distance)
-                )
-
-                if (!targetSquare || !isValidTarget(targetSquare)) break
-
-                moves.push(targetSquare)
-
-                // Stop bei Figur
-                const targetIndices = squareToIndices(targetSquare)
-                const targetPiece = currentBoard.value[targetIndices.rankIndex][targetIndices.fileIndex]
-                if (!isEmpty(targetPiece)) break
-            }
+    const checkForCheckmate = () => {
+        if (!isInCheck.value) {
+            return false
         }
 
-        return moves
-    }
+        const legalMoves = chessLogic.getAllLegalMoves(
+            currentBoard.value,
+            currentPlayer.value,
+            gameState.value
+        )
 
-    /**
-     * Basis Läufer-Züge
-     */
-    const generateBishopMoves = (square) => {
-        const moves = []
-        const indices = squareToIndices(square)
-        if (!indices) return moves
+        const isCheckmate = legalMoves.length === 0
 
-        // Diagonal
-        const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
-
-        for (const [fileDir, rankDir] of directions) {
-            for (let distance = 1; distance < 8; distance++) {
-                const targetSquare = indicesToSquare(
-                    indices.fileIndex + (fileDir * distance),
-                    indices.rankIndex + (rankDir * distance)
-                )
-
-                if (!targetSquare || !isValidTarget(targetSquare)) break
-
-                moves.push(targetSquare)
-
-                // Stop bei Figur
-                const targetIndices = squareToIndices(targetSquare)
-                const targetPiece = currentBoard.value[targetIndices.rankIndex][targetIndices.fileIndex]
-                if (!isEmpty(targetPiece)) break
-            }
+        if (isCheckmate) {
+            gameStatus.value = GAME_STATUS.CHECKMATE
+            console.log('🏁 SCHACHMATT! Spieler', currentPlayer.value, 'hat verloren')
         }
 
-        return moves
+        return isCheckmate
     }
 
-    /**
-     * Basis Dame-Züge (Turm + Läufer)
-     */
-    const generateQueenMoves = (square) => {
-        return [
-            ...generateRookMoves(square),
-            ...generateBishopMoves(square)
-        ]
-    }
+    const checkForStalemate = () => {
+        if (isInCheck.value) {
+            return false
+        }
 
-    /**
-     * Hilfsfunktion: Prüft ob ein Zielfeld valide ist
-     */
-    const isValidTarget = (targetSquare) => {
-        const indices = squareToIndices(targetSquare)
-        if (!indices) return false
+        const legalMoves = chessLogic.getAllLegalMoves(
+            currentBoard.value,
+            currentPlayer.value,
+            gameState.value
+        )
 
-        const targetPiece = currentBoard.value[indices.rankIndex]?.[indices.fileIndex]
+        const isStalemate = legalMoves.length === 0
 
-        // Leeres Feld oder gegnerische Figur
-        return isEmpty(targetPiece) || !isPieceOwnedByPlayer(targetPiece, currentPlayer.value)
-    }
+        if (isStalemate) {
+            gameStatus.value = GAME_STATUS.STALEMATE
+            console.log('🔄 PATT! Das Spiel endet unentschieden')
+        }
 
-    /**
-     * Hilfsfunktion: Prüft ob ein Feld existiert
-     */
-    const isSquareValid = (square) => {
-        const indices = squareToIndices(square)
-        return indices &&
-            indices.fileIndex >= 0 && indices.fileIndex < 8 &&
-            indices.rankIndex >= 0 && indices.rankIndex < 8
+        return isStalemate
     }
 
     /**
      * Zug versuchen auszuführen
-     * @param {string} from
-     * @param {string} to
      * @returns {object} { success: boolean, error?: string }
+     * @param fromSquare
+     * @param toSquare
      */
     const attemptMove = (fromSquare, toSquare) => {
         try {
@@ -568,28 +430,182 @@ export const useGameStore = defineStore('game', () => {
             return { success: false, error: 'Ungültige Koordinaten' }
         }
 
+        if (!capturedPieces.value) {
+            capturedPieces.value = {
+                white: [],
+                black: []
+            }
+        }
+
+        const piece = currentBoard.value[fromIndices.rankIndex][fromIndices.fileIndex]
+        if (isEmpty(piece)) {
+            throw new Error('Kein Piece auf Startfeld')
+        }
+        const targetPiece = currentBoard.value[toIndices.rankIndex][toIndices.fileIndex]
+
+        const gameState = getCurrentGameState()
+
+        const possibleMoves = chessLogic.generatePossibleMoves(piece, fromSquare, currentBoard.value, gameState)
+        const targetMove = possibleMoves.find(move => move.to === toSquare)
+
+        if (!targetMove) {
+            throw new Error('Illegaler Zug')
+        }
+
+        console.log('🎯 executeMove - gefundener Move:', targetMove)
+
         // Board kopieren
         const newBoard = cloneBoard(currentBoard.value)
 
-        // Figur bewegen
-        const piece = newBoard[fromIndices.rankIndex][fromIndices.fileIndex]
-        newBoard[toIndices.rankIndex][toIndices.fileIndex] = piece
-        newBoard[fromIndices.rankIndex][fromIndices.fileIndex] = ' '
+        // 3. Spezielle Züge behandeln basierend auf Move-Type
+        switch (targetMove.type) {
+            case 'enpassant':
+                // En-Passant: Geschlagenen Bauer entfernen
+                const capturedSquareIndices = squareToIndices(targetMove.capturedSquare)
+                if (capturedSquareIndices) {
+                    const capturedPiece = newBoard[capturedSquareIndices.rankIndex][capturedSquareIndices.fileIndex]
+                    if (capturedPiece) {
+                        addCapturedPiece(capturedPiece)
+                        newBoard[capturedSquareIndices.rankIndex][capturedSquareIndices.fileIndex] = null
+                        console.log('🎯 En-Passant: Entferne', capturedPiece, 'von', targetMove.capturedSquare)
+                    }
+                }
+                break
 
-        // Nächster Spieler ermitteln (WICHTIG!)
+            case 'capture':
+                // Normale Eroberung
+                addCapturedPiece(targetPiece)
+                break
+
+            case 'castle':
+                // ⭐ ROCHADE: Turm auch bewegen
+                const rookMove = chessLogic.getCastlingRookMove(fromSquare, toSquare)
+                if (rookMove) {
+                    const rookFromIndices = squareToIndices(rookMove.from)
+                    const rookToIndices = squareToIndices(rookMove.to)
+
+                    if (rookFromIndices && rookToIndices) {
+                        // Turm von der ursprünglichen Position nehmen
+                        const rook = newBoard[rookFromIndices.rankIndex][rookFromIndices.fileIndex]
+
+                        // Turm zur neuen Position bewegen
+                        newBoard[rookToIndices.rankIndex][rookToIndices.fileIndex] = rook
+                        newBoard[rookFromIndices.rankIndex][rookFromIndices.fileIndex] = null
+
+                        console.log('🏰 Rochade: Turm bewegt von', rookMove.from, 'nach', rookMove.to)
+                    }
+                }
+                break
+        }
+
+        // Figur bewegen
+        newBoard[toIndices.rankIndex][toIndices.fileIndex] = piece
+        newBoard[fromIndices.rankIndex][fromIndices.fileIndex] = null
+
+        // Prüfen ob König nach dem Zug im Schach steht
+        if (!chessLogic.isMoveLegal(currentBoard.value, fromSquare, toSquare, currentPlayer.value, gameState.value)) {
+            return { success: false, error: 'Zug würde König ins Schach setzen' }
+        }
+
+        // Nächster Spieler ermitteln
         const nextPlayer = currentPlayer.value === 'white' ? 'black' : 'white'
 
-        // Neue Position als FEN generieren (mit Spielerwechsel!)
-        const newFen = generateFen(newBoard, nextPlayer)
+        // EN-PASSANT-FELD BERECHNEN:
+        let newEnPassantSquare = null
+
+        // Prüfe ob ein Bauer einen Doppelzug gemacht hat
+        const pieceType = piece?.toLowerCase()
+        if (pieceType === 'p') {
+            const rankDistance = Math.abs(toIndices.rankIndex - fromIndices.rankIndex)
+
+            // Doppelzug von Startposition?
+            if (rankDistance === 2) {
+                const isWhitePawnMove = isWhitePiece(piece)
+                const startRank = isWhitePawnMove ? 6 : 1 // Weiß startet auf Rang 7 (Index 6), Schwarz auf Rang 2 (Index 1)
+
+                if (fromIndices.rankIndex === startRank) {
+                    // En-Passant-Zielfeld ist das Feld "hinter" dem Bauer
+                    const enPassantRank = isWhitePawnMove ? 5 : 2 // Rang 6 (Index 5) für Weiß, Rang 3 (Index 2) für Schwarz
+                    newEnPassantSquare = indicesToSquare(toIndices.fileIndex, enPassantRank)
+
+                    console.log(`🎯 Bauer-Doppelzug erkannt: ${fromSquare} -> ${toSquare}`)
+                    console.log(`🎯 En-Passant-Feld gesetzt: ${newEnPassantSquare}`)
+                }
+            }
+        }
+
+        // Aktuelle Rochade-Rechte und andere Werte beibehalten
+        const currentCastlingRights = castlingRights.value
+        const currentHalfmoveClock = halfmoveClock.value
+        const currentFullmoveNumber = fullmoveNumber.value
+
+        // Vollzug-Nummer erhöhen wenn Schwarz gezogen hat
+        const newFullmoveNumber = currentPlayer.value === 'black'
+            ? currentFullmoveNumber + 1
+            : currentFullmoveNumber
+
+        // Neue Position als FEN generieren
+        const newFen = generateFen(
+            newBoard,
+            nextPlayer,
+            currentCastlingRights,
+            newEnPassantSquare,  // WICHTIG: Das berechnete En-Passant-Feld
+            currentHalfmoveClock,
+            newFullmoveNumber
+        )
+
+        console.log('🎯 Neue FEN:', newFen)
         setFen(newFen)
 
         // Move History updaten
-        lastMove.value = { from: fromSquare, to: toSquare, piece }
-        moveHistory.value.push(lastMove.value)
+        const moveRecord = {
+            from: fromSquare,
+            to: toSquare,
+            piece,
+            // san: TODO: generateMoveNotation(fromSquare, toSquare, currentBoard.value, ),
+            fenBefore: currentFen.value,
+            fenAfter: newFen,
+            timestamp: new Date(),
+            moveType: targetMove.type,
+            capturedPieces
+        }
 
-        console.log(`Move executed: ${fromSquare} -> ${toSquare}, next player: ${nextPlayer}`)
+        moveHistory.value.push(moveRecord)
+        lastMove.value = moveRecord
 
-        return { success: true, move: lastMove.value }
+        console.log('✅ Zug erfolgreich ausgeführt:', moveRecord)
+        return { success: true, move: moveRecord }
+    }
+
+    /**
+     * Geschlagene Figur hinzufügen (verwendet globale capturedPieces)
+     */
+    const addCapturedPiece = (piece) => {
+        if (!capturedPieces.value) {
+            capturedPieces.value = { white: [], black: [] }
+        }
+
+        const pieceColor = getPieceColor(piece)
+        const pieceInfo = {
+            type: piece.toLowerCase(),
+            notation: piece,
+            timestamp: new Date().toISOString()
+        }
+
+        // Geschlagene Figur zur entsprechenden Liste hinzufügen
+        if (pieceColor === PLAYER_COLORS.WHITE) {
+            if (!capturedPieces.value.white) {
+                capturedPieces.value.white = []
+            }
+            capturedPieces.value.white.push(pieceInfo)
+        } else {
+            if (!capturedPieces.value.black) {
+                capturedPieces.value.black = []
+            }
+            capturedPieces.value.black.push(pieceInfo)
+        }
+
+        console.log('Geschlagene Figur hinzugefügt:', piece, 'zu', pieceColor, 'Liste')
     }
 
     /**
@@ -634,6 +650,7 @@ export const useGameStore = defineStore('game', () => {
         gameId,
         gameStatus,
         gameMode,
+        gameState,
         whitePlayer,
         blackPlayer,
         selectedSquare,
@@ -650,6 +667,7 @@ export const useGameStore = defineStore('game', () => {
         // Computed
         currentBoard,
         currentPlayer,
+        currentFEN: currentFen,
         isGameActive,
         canCurrentPlayerMove,
         hasSelection,
@@ -664,12 +682,16 @@ export const useGameStore = defineStore('game', () => {
         loadGameFromFen,
         clearSelection,
         selectSquare,
-        generateLegalMoves,
         attemptMove,
         executeMove,
         checkGameStatus,
         undoLastMove,
         resignGame,
-        gotoMove
+        gotoMove,
+        redoStack,
+
+        checkForCheck,
+        checkForCheckmate,
+        checkForStalemate,
     }
 })

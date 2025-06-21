@@ -77,7 +77,7 @@ const moveCount = computed(() => {
 // ===== ACTIONS =====
 
 const handleNewGame = () => {
-    gameStore.initializeNewGame()
+    gameStore.startNewGame()
     emit('newGame')
 }
 
