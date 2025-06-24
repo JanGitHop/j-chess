@@ -1,61 +1,189 @@
-<p ><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Schach - Online Schachplattform
 
-<p >
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Eine moderne, interaktive Schachplattform, entwickelt mit Laravel und Vue.js.
 
-## About Laravel
+![Schach Logo](public/images/logo.png)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Über das Projekt
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Dieses Projekt ist eine vollständige Schachplattform, die es Benutzern ermöglicht, Schach online zu spielen - entweder gegen andere Spieler in Echtzeit oder gegen verschiedene KI-Gegner. Die Anwendung nutzt moderne Webtechnologien für ein reaktionsschnelles und ansprechendes Spielerlebnis.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Hauptfunktionen
 
-## Learning Laravel
+- Interaktives Schachbrett mit Drag-and-Drop-Funktionalität
+- Vollständige Implementierung der Schachregeln
+- Multiplayer-Modus in Echtzeit
+- KI-Gegner mit verschiedenen Schwierigkeitsgraden
+- Spielanalyse und Zugvorschläge
+- Benutzerprofile und Ranglisten
+- Spielhistorie und PGN-Export
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Technologien
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Backend
+- Laravel 10.x
+- Inertia.js Server-Adapter
+- Laravel Sanctum (Authentication)
+- Laravel WebSockets/Pusher (Echtzeit-Kommunikation)
+- Queue System (für Engine-Berechnungen)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Frontend
+- Vue 3 (Composition API)
+- Inertia.js Client-Adapter
+- Pinia (State Management)
+- Tailwind CSS
+- Vue-Draggable (für Schachfiguren)
 
-## Laravel Sponsors
+## Installation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Voraussetzungen
+- Docker und Docker Compose
+- PHP 8.4 oder höher
+- Composer
+- Node.js und NPM
 
-### Premium Partners
+### Schritte zur Installation
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+1. Repository klonen:
+   ```bash
+   git clone https://github.com/yourusername/schach.git
+   cd schach
+   ```
 
-## Contributing
+2. Abhängigkeiten installieren:
+   ```bash
+   composer install
+   npm install
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3. Umgebungsvariablen konfigurieren:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
-## Code of Conduct
+4. Docker-Container starten:
+   ```bash
+   ./vendor/bin/sail up -d
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+5. Datenbank-Migrationen ausführen:
+   ```bash
+   ./vendor/bin/sail artisan migrate
+   ```
 
-## Security Vulnerabilities
+6. Frontend-Assets kompilieren:
+   ```bash
+   ./vendor/bin/sail npm run dev
+   ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+7. Die Anwendung ist nun unter http://localhost erreichbar
 
-## License
+## Entwicklung
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Entwicklungsumgebung
+
+Das Projekt verwendet Laravel Sail für eine Docker-basierte Entwicklungsumgebung. Folgende Dienste sind verfügbar:
+
+- **Laravel**: PHP-Anwendungsserver
+- **MySQL**: Datenbank
+- **Redis**: Cache und Queues
+- **Mailpit**: E-Mail-Testing
+- **Soketi**: WebSocket-Server
+- **Meilisearch**: Suchfunktionalität
+
+### Nützliche Befehle
+
+- Server starten: `./vendor/bin/sail up -d`
+- Server stoppen: `./vendor/bin/sail down`
+- Composer-Befehle: `./vendor/bin/sail composer <command>`
+- Artisan-Befehle: `./vendor/bin/sail artisan <command>`
+- NPM-Befehle: `./vendor/bin/sail npm <command>`
+- Tests ausführen: `./vendor/bin/sail test`
+
+## Projektstruktur
+
+```
+Schach/
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── GameController.php
+│   │   ├── AuthController.php
+│   │   ├── ChessEngineController.php
+│   ├── Models/
+│   │   ├── User.php
+│   │   ├── Game.php
+│   │   ├── Move.php
+│   │   ├── ChessEngine.php
+│   ├── Services/
+│   │   ├── ChessEngineService.php
+│   │   ├── GameLogicService.php
+│   │   ├── MultiplayerService.php
+│   ├── Events/
+│   │   ├── GameStarted.php
+│   │   ├── MoveMade.php
+│   │   ├── GameEnded.php
+├── resources/
+│   ├── js/
+│   │   ├── Components/
+│   │   │   ├── ChessBoard.vue
+│   │   │   ├── ChessPiece.vue
+│   │   │   ├── GameControls.vue
+│   │   ├── Pages/
+│   │   │   ├── Game/
+│   │   │   ├── Dashboard.vue
+│   │   ├── Stores/
+│   │   │   ├── gameStore.js
+│   │   │   ├── boardStore.js
+│   │   │   ├── pieceStore.js
+├── routes/
+│   ├── web.php
+│   ├── channels.php
+├── database/
+│   ├── migrations/
+├── docs/
+│   ├── tasks.md
+```
+
+## Roadmap
+
+Die Entwicklung des Projekts ist in mehrere Phasen unterteilt:
+
+### Phase 1: Grundgerüst ✓
+- Laravel + Inertia.js Setup
+- Basis-Schachbrett (Vue-Komponente)
+- Einfache Spiellogik
+
+### Phase 2: Core Features (In Bearbeitung)
+- PvP-Spiele (lokal)
+- Grundlegende Schachregeln
+- Spielhistorie
+- Profil-Management
+
+### Phase 3: Multiplayer (Geplant)
+- WebSocket-Integration
+- Live-Spiele zwischen Benutzern
+- Lobby-System
+- Spectator-Modus
+
+### Phase 4: Engine-Integration (Geplant)
+- Stockfish-Integration
+- Engine-Management-System
+- Verschiedene Schwierigkeitsgrade
+- Analyse-Features
+
+Für eine detaillierte Liste der geplanten Aufgaben, siehe [docs/tasks.md](docs/tasks.md).
+
+## Mitwirken
+
+Beiträge zum Projekt sind willkommen! Bitte folgen Sie diesen Schritten:
+
+1. Fork des Repositories
+2. Feature-Branch erstellen (`git checkout -b feature/AmazingFeature`)
+3. Änderungen committen (`git commit -m 'Add some AmazingFeature'`)
+4. Branch pushen (`git push origin feature/AmazingFeature`)
+5. Pull Request erstellen
+
+## Lizenz
+
+Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe die [LICENSE](LICENSE) Datei für Details.
