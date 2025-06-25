@@ -175,7 +175,7 @@ export function useDragAndDrop() {
 
         currentPosition.value = coords
 
-        // Ghost-Element Position updaten
+        // Ghost-Element Position update
         if (ghostElement.value) {
             ghostElement.value.style.left = `${coords.x - dragOffset.value.x}px`
             ghostElement.value.style.top = `${coords.y - dragOffset.value.y}px`
@@ -192,10 +192,6 @@ export function useDragAndDrop() {
         event.preventDefault()
     }
 
-    /**
-     * Drag-Operation beenden
-     * @param {Event} event
-     */
     const endDrag = (event) => {
         if (!isDragActive.value) return
 
@@ -203,25 +199,29 @@ export function useDragAndDrop() {
         const dropSquare = boardStore.mousePosition.square
 
         let success = false
+        let needsPromotion = false
 
-        // Drop versuchen
+        // attempt move
         if (dropSquare && dropSquare !== gameStore.draggedFrom) {
             const moveResult = gameStore.attemptMove(gameStore.draggedFrom, dropSquare)
             success = moveResult.success
+            needsPromotion = moveResult.needsPromotion || false
+
+            if (needsPromotion) {
+                console.log('🎯 useDragAndDrop: Promotion erkannt beim endDrag')
+            }
         }
 
-        // Original-Element wiederherstellen
         if (dragElement.value) {
             dragElement.value.style.opacity = '1'
             dragElement.value.style.transform = ''
         }
 
-        // Animation für failed drops
-        if (!success && coords && dragElement.value) {
+        // Animation für failed drops (aber nicht für Promotion!)
+        if (!success && !needsPromotion && coords && dragElement.value) {
             animateSnapBack()
         }
 
-        // Cleanup
         cleanupDrag()
 
         event.preventDefault()

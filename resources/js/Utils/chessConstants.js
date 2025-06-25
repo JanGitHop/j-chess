@@ -3,26 +3,25 @@
  * Central file for all chess-related constants
  */
 
-// FEN-Startposition
 export const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 // Mappings (FEN-notation to SVG-files)
 export const PIECE_IMAGES = {
     // black pieces
-    'r': '/images/figures/default/rd.svg', // Turm (Rook)
-    'n': '/images/figures/default/nd.svg', // Springer (Knight)
-    'b': '/images/figures/default/bd.svg', // Läufer (Bishop)
-    'q': '/images/figures/default/qd.svg', // Dame (Queen)
-    'k': '/images/figures/default/kd.svg', // König (King)
-    'p': '/images/figures/default/pd.svg', // Bauer (Pawn)
+    'r': '/images/pieces/default/rd.svg', // Turm (Rook)
+    'n': '/images/pieces/default/nd.svg', // Springer (Knight)
+    'b': '/images/pieces/default/bd.svg', // Läufer (Bishop)
+    'q': '/images/pieces/default/qd.svg', // Dame (Queen)
+    'k': '/images/pieces/default/kd.svg', // König (King)
+    'p': '/images/pieces/default/pd.svg', // Bauer (Pawn)
 
     // white pieces
-    'R': '/images/figures/default/rl.svg', // Turm (Rook)
-    'N': '/images/figures/default/nl.svg', // Springer (Knight)
-    'B': '/images/figures/default/bl.svg', // Läufer (Bishop)
-    'Q': '/images/figures/default/ql.svg', // Dame (Queen)
-    'K': '/images/figures/default/kl.svg', // König (King)
-    'P': '/images/figures/default/pl.svg'  // Bauer (Pawn)
+    'R': '/images/pieces/default/rl.svg', // Turm (Rook)
+    'N': '/images/pieces/default/nl.svg', // Springer (Knight)
+    'B': '/images/pieces/default/bl.svg', // Läufer (Bishop)
+    'Q': '/images/pieces/default/ql.svg', // Dame (Queen)
+    'K': '/images/pieces/default/kl.svg', // König (King)
+    'P': '/images/pieces/default/pl.svg'  // Bauer (Pawn)
 }
 
 export const PIECE_NAMES = {
@@ -66,7 +65,7 @@ export const DRAG_EVENTS = {
     DROP: 'drop'
 }
 
-// figure values for engine rating
+// piece rating
 export const PIECE_VALUES = {
     'p': 1, 'P': 1,
     'n': 3, 'N': 3,

@@ -18,36 +18,24 @@ import {
 export const usePieceStore = defineStore('piece', () => {
     // ===== STATE =====
 
-    /**
-     * Aktuelle Figuren-Set Konfiguration
-     */
     const currentPieceSet = ref('default')
 
-    /**
-     * Verfügbare Figuren-Sets
-     */
     const availablePieceSets = ref({
         default: {
             name: 'Standard',
-            path: '/images/figures/default/',
+            path: '/images/pieces/default/',
             pieces: PIECE_IMAGES
         }
-        // Hier können später weitere Sets hinzugefügt werden:
-        // medieval: { name: 'Medieval', path: '/images/figures/medieval/', ... }
+        // example
+        // medieval: { name: 'Medieval', path: '/images/pieces/medieval/', ... }
     })
 
-    /**
-     * Figuren-Animationen aktiviert
-     */
     const animationsEnabled = ref(true)
 
-    /**
-     * Animation-Geschwindigkeit (ms)
-     */
     const animationDuration = ref(300)
 
     /**
-     * Drag & Drop visuelle Einstellungen
+     * Drag & Drop visuals
      */
     const dragSettings = ref({
         showGhost: true,          // Zeige Ghost-Image beim Dragging
@@ -57,12 +45,12 @@ export const usePieceStore = defineStore('piece', () => {
     })
 
     /**
-     * Figuren-Größen-Einstellungen
+     * piece size
      */
     const sizeSettings = ref({
-        scaleOnHover: 1.05,       // Vergrößerung bei Hover
-        scaleOnDrag: 1.1,         // Vergrößerung beim Dragging
-        scaleOnSelect: 1.02       // Vergrößerung bei Auswahl
+        scaleOnHover: 1.05,       // Enlargement at Hover
+        scaleOnDrag: 1.1,         // Enlargement on dragging
+        scaleOnSelect: 1.02
     })
 
     // ===== COMPUTED =====
@@ -181,7 +169,7 @@ export const usePieceStore = defineStore('piece', () => {
 
         availablePieceSets.value[setName] = {
             name: setConfig.name,
-            path: setConfig.path || `/images/figures/${setName}/`,
+            path: setConfig.path || `/images/pieces/${setName}/`,
             pieces: setConfig.pieces
         }
 

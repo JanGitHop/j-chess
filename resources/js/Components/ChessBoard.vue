@@ -72,7 +72,7 @@ const { isDragActive, dragData, findSquareFromElement } = useDragAndDrop()
 const containerRef = ref(null)
 const windowSize = ref({ width: 0, height: 0 })
 
-// Schachbrett-Setup (Board-Orientierung berücksichtigen)
+// Chess board setup (Board orientation dependent)
 const files = computed(() =>
     props.orientation === 'white'
         ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -128,17 +128,17 @@ const squareSize = computed(() => Math.floor(boardSize.value / 8))
 const coordinateSpace = computed(() => 0)
 const totalSize = computed(() => boardSize.value)
 
-// Hilfsfunktionen für Koordinaten-Anzeige
+// helper functions for coordinate display
 const shouldShowFileCoordinate = (file, rank) => {
     if (!currentShowCoordinates.value) return false
-    // Zeige Files in der untersten Reihe (rank 1 für weiß, rank 8 für schwarz)
+
     const bottomRank = props.orientation === 'white' ? 1 : 8
     return rank === bottomRank
 }
 
 const shouldShowRankCoordinate = (file, rank) => {
     if (!currentShowCoordinates.value) return false
-    // Zeige Ranks in der rechtesten Spalte (h für weiß, a für schwarz)
+
     const rightFile = props.orientation === 'white' ? 'h' : 'a'
     return file === rightFile
 }
@@ -170,7 +170,7 @@ const coordinateStyle = computed(() => ({
 // ===== SQUARE & PIECE LOGIC =====
 
 /**
- * Figur auf einem Feld abrufen mit korrekter pieceStore Integration
+ * Call up the piece on a field with a correct piece store integration
  */
 const getPieceOnSquare = (file, rank) => {
     const square = `${file}${rank}`
@@ -182,17 +182,15 @@ const getPieceOnSquare = (file, rank) => {
 
     const fenPiece = gameStore.currentBoard[indices.rankIndex][indices.fileIndex]
 
-    // Leere Felder zurückgeben
     if (!fenPiece || fenPiece === ' ') {
         return null
     }
 
-    // Vollständige Figureninformation vom pieceStore abrufen
     return pieceStore.getPieceInfo(fenPiece)
 }
 
 /**
- * Square-Stil mit fester Größe für alle Felder
+ * Square style with a fixed size for all fields
  */
 const getSquareStyle = (file, rank) => {
     const square = `${file}${rank}`
@@ -203,7 +201,7 @@ const getSquareStyle = (file, rank) => {
         ? squareColors.value.light
         : squareColors.value.dark
 
-    // WICHTIG: Feste Größe für alle Felder, unabhängig vom Inhalt
+    // Important: Festival size for all fields, regardless of the content
     let style = {
         width: `${squareSize.value}px`,
         height: `${squareSize.value}px`,
@@ -216,8 +214,8 @@ const getSquareStyle = (file, rank) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxSizing: 'border-box', // Wichtig für konsistente Größe
-        overflow: 'hidden' // Verhindert, dass Inhalte die Feldgröße beeinflussen
+        boxSizing: 'border-box', // Important for consistent size
+        overflow: 'hidden' // Prevents content to influence the field size
     }
 
     // Theme-Texturen anwenden
@@ -278,9 +276,6 @@ const getSquareStyle = (file, rank) => {
     return style
 }
 
-/**
- * Prüft ob eine Figur dragbar ist
- */
 const isDraggable = (pieceInfo, square) => {
     if (!pieceInfo || !props.interactive || !gameStore.isGameActive) return false
 
@@ -304,10 +299,7 @@ const handleSquareClick = (file, rank) => {
     })
 }
 
-// Angepasste Handler für konsistente Event-Datenstruktur
 const handlePieceClick = (event, pieceInfo, square) => {
-    console.log('🎯 ChessBoard: Piece clicked:', pieceInfo, square)
-
     emit('pieceClick', {
         piece: pieceInfo,
         square,
@@ -324,8 +316,6 @@ const handlePieceClick = (event, pieceInfo, square) => {
 }
 
 const handleDragStart = (event, pieceInfo, square) => {
-    console.log('🎯 ChessBoard: Drag start:', pieceInfo, square)
-
     gameStore.draggedPiece = pieceInfo
     gameStore.draggedFrom = square
     gameStore.isDragging = true
@@ -342,6 +332,7 @@ const handleDragStart = (event, pieceInfo, square) => {
 
 const handleDragEnd = (event) => {
     console.log('Drag end')
+
     gameStore.draggedPiece = null
     gameStore.draggedFrom = null
     gameStore.isDragging = false
@@ -353,13 +344,11 @@ const handleDrop = (event, file, rank) => {
     const dropSquare = `${file}${rank}`
     console.log('🎯 ChessBoard: Drop auf Feld:', dropSquare)
 
-    // Prüfen ob wir aktuell draggen
     if (!gameStore.isDragging || !gameStore.draggedFrom) {
         console.log('❌ Kein aktiver Drag-Vorgang')
         return
     }
 
-    // Zug versuchen
     const moveResult = gameStore.attemptMove(gameStore.draggedFrom, dropSquare)
 
     if (moveResult.success) {
@@ -370,6 +359,15 @@ const handleDrop = (event, file, rank) => {
             piece: gameStore.draggedPiece,
             success: true
         })
+    } else if (moveResult.needsPromotion) {
+        console.log('🎯 ChessBoard: Promotion beim Drop erkannt!')
+        emit('move', {
+            from: moveResult.from,
+            to: moveResult.to,
+            piece: moveResult.piece,
+            success: false,
+            needsPromotion: true
+        })
     } else {
         console.log('❌ Zug fehlgeschlagen:', moveResult.error)
         emit('invalidMove', {
@@ -379,7 +377,7 @@ const handleDrop = (event, file, rank) => {
         })
     }
 
-    // Drag-State zurücksetzen (immer!)
+    gameStore.legalMoves = []
     gameStore.isDragging = false
     gameStore.draggedPiece = null
     gameStore.draggedFrom = null
@@ -402,7 +400,7 @@ onMounted(() => {
     updateWindowSize()
     window.addEventListener('resize', updateWindowSize)
 
-    // Figuren-Bilder vorladen für bessere Performance
+    // for better performance
     if (pieceStore.preloadPieceImages) {
         pieceStore.preloadPieceImages()
     }
@@ -437,7 +435,6 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- Das eigentliche Schachbrett -->
             <div
                 class="chess-board"
                 :style="{ width: `${boardSize}px`, height: `${boardSize}px` }"
@@ -466,7 +463,6 @@ onUnmounted(() => {
                         @drop="handleDrop($event, file, rank)"
                         @dragover="handleDragOver"
                     >
-                        <!-- Schachfigur (falls vorhanden) -->
                         <ChessPiece
                             v-if="getPieceOnSquare(file, rank)"
                             :key="`piece-${file}${rank}`"

@@ -53,7 +53,7 @@
 
 ## Schachlogik und Spielfunktionen
 1. [ ] Schachregeln vervollständigen:
-   - [ ] Spezielle Züge (En Passant, Rochade) implementieren
+   - [ ] Spezielle Züge (En Passant ✅, Rochade ✅, "Pawn Promote") implementieren
    - [ ] Spielende-Bedingungen (50-Züge-Regel, Remis durch Stellungswiederholung)
    - [ ] Zugvalidierung verbessern
 2. [ ] Schachmotor-Integration:

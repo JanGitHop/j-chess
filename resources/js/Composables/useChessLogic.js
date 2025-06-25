@@ -71,8 +71,6 @@ export function useChessLogic() {
      * @param {object} gameState - Zusätzliche Spielinformationen
      * @returns {Array} Array von möglichen Zügen
      */
-
-
     const generatePossibleMoves = (piece, square, board, gameState = {}) => {
         if (isEmpty(piece) || !board.length) return []
 
@@ -560,6 +558,47 @@ export function useChessLogic() {
         return (isWhite && rankIndex === 0) || (!isWhite && rankIndex === 7)
     }
 
+    const requiresPromotion = (from, to, piece) => {
+        if (!from || !to || !piece) {
+            return false
+        }
+
+        const pieceType = piece.toLowerCase()
+        if (pieceType !== 'p') {
+            return false
+        }
+
+        const toIndices = squareToIndices(to)
+        if (!toIndices) {
+            return false
+        }
+        const targetRank = toIndices.rankIndex
+        const isWhitePawn = isWhitePiece(piece)
+
+        const isPromotion = (isWhitePawn && targetRank === 0) || (!isWhitePawn && targetRank === 7)
+
+        console.log('🎯 Promotion-Result:', {
+            targetRank,
+            isWhitePawn,
+            isPromotion,
+            rankCheck: isWhitePawn ? 'targetRank === 0' : 'targetRank === 7'
+        })
+
+        return isPromotion
+    }
+
+    /**
+     * returns valid promotion pieces
+     * @param {string} playerColor - 'white' or 'black'
+     * @returns {Array} Array of FEN-symbols ['Q', 'R', 'B', 'N']
+     */
+    const getValidPromotionPieces = (playerColor) => {
+        const pieces = ['q', 'r', 'b', 'n']
+        return playerColor === 'white'
+            ? pieces.map(p => p.toUpperCase())
+            : pieces
+    }
+
     // ===== VALIDATION FUNCTIONS =====
 
     /**
@@ -812,7 +851,6 @@ export function useChessLogic() {
      * @returns {boolean}
      */
     const isSquareAttacked = (board, square, attackingColor, gameState = {}) => {
-        // Alle Figuren der angreifenden Farbe durchgehen
         for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
             for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
                 const piece = board[rankIndex][fileIndex]
@@ -826,7 +864,6 @@ export function useChessLogic() {
 
                 const possibleMoves = generatePossibleMoves(piece, fromSquare, board, gameState)
 
-                // Prüfen ob das Zielfeld angegriffen wird
                 const canAttackSquare = possibleMoves.some(move => move.to === square)
                 if (canAttackSquare) {
                     return true
@@ -869,6 +906,7 @@ export function useChessLogic() {
         const enemyColor = playerColor === 'white' ? 'black' : 'white'
         return isSquareAttacked(board, kingSquare, enemyColor, gameState)
     }
+
     /**
      * Prüft ob ein Zug legal ist (König steht nach dem Zug nicht im Schach)
      * @param {Array} board - 2D Brett-Array
@@ -880,7 +918,6 @@ export function useChessLogic() {
      */
     const isMoveLegal = (board, fromSquare, toSquare, playerColor, gameState = {}) => {
         try {
-            // Temporäres Brett für Zugvalidierung erstellen
             const testBoard = cloneBoard(board)
             const fromIndices = squareToIndices(fromSquare)
             const toIndices = squareToIndices(toSquare)
@@ -890,11 +927,9 @@ export function useChessLogic() {
             const piece = testBoard[fromIndices.rankIndex][fromIndices.fileIndex]
             if (isEmpty(piece)) return false
 
-            // Zug auf dem Test-Brett ausführen
             testBoard[toIndices.rankIndex][toIndices.fileIndex] = piece
             testBoard[fromIndices.rankIndex][fromIndices.fileIndex] = null
 
-            // Prüfen ob der eigene König nach dem Zug im Schach steht
             return !isInCheck(testBoard, playerColor, gameState)
 
         } catch (error) {
@@ -911,12 +946,10 @@ export function useChessLogic() {
      * @returns {boolean}
      */
     const isCheckmate = (board, playerColor, gameState = {}) => {
-        // 1. Muss im Schach stehen
         if (!isInCheck(board, playerColor, gameState)) {
             return false
         }
 
-        // 2. Keine legalen Züge haben
         const legalMoves = generateLegalMoves(board, playerColor, gameState)
         return legalMoves.length === 0
     }
@@ -929,12 +962,10 @@ export function useChessLogic() {
      * @returns {boolean}
      */
     const isStalemate = (board, playerColor, gameState = {}) => {
-        // 1. Darf NICHT im Schach stehen
         if (isInCheck(board, playerColor, gameState)) {
             return false
         }
 
-        // 2. Keine legalen Züge haben
         const legalMoves = generateLegalMoves(board, playerColor, gameState)
         return legalMoves.length === 0
     }
@@ -982,7 +1013,7 @@ export function useChessLogic() {
     }
 
     const isPathClear = (from, to, board) => {
-        // Vereinfachte Implementierung
+        // Simplified implementation
         const squares = getSquaresBetween(from, to)
         return squares.every(square => {
             const indices = squareToIndices(square)
@@ -1050,6 +1081,9 @@ export function useChessLogic() {
         isValidPosition,
         isPromotionRank,
         isCastlingPathClear,
+
+        requiresPromotion,
+        getValidPromotionPieces,
 
         getAttackingPieces,
         getCastlingRookMove,

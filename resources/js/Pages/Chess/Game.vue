@@ -6,6 +6,7 @@ import BoardSettings from '@/Components/BoardSettings.vue'
 import MoveHistory from '@/Components/MoveHistory.vue'
 import GameControls from '@/Components/GameControls.vue'
 import PlayerInfo from '@/Components/PlayerInfo.vue'
+import PromotionModal from '@/Components/PromotionModal.vue'
 import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
@@ -50,6 +51,13 @@ const showGameControls = ref(true)
 const isFullscreen = ref(false)
 const sidebarCollapsed = ref(false)
 
+const showPromotionModal = ref(false)
+const promotionData = ref({
+    fromSquare: null,
+    toSquare: null,
+    playerColor: null
+})
+
 // Game State
 const gameStartTime = ref(null)
 const lastMoveTime = ref(null)
@@ -70,9 +78,6 @@ const {
 
 // ===== COMPUTED PROPERTIES =====
 
-/**
- * Aktueller Spielzustand für UI
- */
 const gameState = computed(() => ({
     status: gameStore.gameStatus,
     currentPlayer: gameStore.currentPlayer,
@@ -87,7 +92,7 @@ const gameState = computed(() => ({
 }))
 
 /**
- * Board-Orientierung basierend auf Spieler-Farbe
+ * Board orientation based on player
  */
 const boardOrientation = computed(() => {
     if (props.playerColor === 'both') return 'white'
@@ -95,7 +100,7 @@ const boardOrientation = computed(() => {
 })
 
 /**
- * Layout-Klassen für responsive Design
+ * for responsive Design
  */
 const layoutClasses = computed(() => ({
     'game-layout': true,
@@ -104,9 +109,6 @@ const layoutClasses = computed(() => ({
     'game-layout--mobile': window.innerWidth < 768
 }))
 
-/**
- * Aktuelle Benachrichtigungen
- */
 const activeNotifications = computed(() =>
     notifications.value.filter(n => !n.dismissed)
 )
@@ -119,7 +121,11 @@ const activeNotifications = computed(() =>
 const handleSquareClick = (squareData) => {
     console.log('Square clicked:', squareData)
 
-    // Benachrichtigung bei erfolgreichem Zug
+    if (squareData.needsPromotion) {
+        showPromotionDialog(squareData)
+        return
+    }
+
     if (squareData.success && gameState.value.lastMove) {
         addNotification({
             type: 'move',
@@ -128,7 +134,6 @@ const handleSquareClick = (squareData) => {
         })
     }
 
-    // Sound abspielen
     if (soundEnabled.value && squareData.success) {
         playMoveSound(squareData)
     }
@@ -141,15 +146,89 @@ const handlePieceClick = (pieceData) => {
     console.log('Piece clicked:', pieceData)
 }
 
+const showPromotionDialog = (moveData) => {
+    console.log('show promotion dialog?')
+    promotionData.value = {
+        fromSquare: moveData.from,
+        toSquare: moveData.to,
+        playerColor: gameStore.currentPlayer
+    }
+    showPromotionModal.value = true
+}
+
+const handlePromotionConfirm = (promotionChoice) => {
+    const { from, to, promotionPiece } = promotionChoice
+
+    console.log('🔄 Promotion bestätigt:', { from, to, promotionPiece })
+
+    const moveResult = gameStore.attemptMove(from, to, {
+        promotion: promotionPiece
+    })
+
+    if (moveResult.success) {
+        addNotification({
+            type: 'success',
+            message: `Bauernumwandlung: ${promotionPiece === promotionPiece.toUpperCase() ? 'Weiß' : 'Schwarz'} → ${pieceStore.getPieceName(promotionPiece)}`,
+            duration: 3000
+        })
+
+        if (soundEnabled.value) {
+            playGameSound('promotion')
+        }
+
+        handleMoveCompleted(moveResult)
+    } else {
+        addNotification({
+            type: 'error',
+            message: 'Ungültiger Promotion-Zug',
+            duration: 2000
+        })
+    }
+
+    hidePromotionDialog()
+}
+
+const handlePromotionCancel = () => {
+    console.log('🚫 Promotion abgebrochen')
+
+    addNotification({
+        type: 'info',
+        message: 'Bauernumwandlung abgebrochen',
+        duration: 2000
+    })
+
+    hidePromotionDialog()
+}
+
+const hidePromotionDialog = () => {
+    showPromotionModal.value = false
+    promotionData.value = {
+        fromSquare: null,
+        toSquare: null,
+        playerColor: null
+    }
+
+    gameStore.clearSelection()
+}
+
 /**
  * Board Events - Move
  */
 const handleMove = (moveData) => {
     console.log('Move made:', moveData)
+
+    if (moveData.needsPromotion) {
+        showPromotionDialog(moveData)
+        return
+    }
+
+    handleMoveCompleted(moveData)
+}
+
+const handleMoveCompleted = (moveData) => {
     console.log('FEN:', gameStore.currentFen)
     lastMoveTime.value = new Date()
 
-    // ⭐ MOVE-DETAILS AUS GAMESTORE HOLEN
     const lastMoveRecord = gameStore.lastMove
 
     gameStore.checkForCheck(gameState)
@@ -158,7 +237,6 @@ const handleMove = (moveData) => {
 
     const enhancedMoveData = {
         ...moveData,
-        // ✅ KORREKTE CAPTURE-ERKENNUNG: Nur aktueller Zug, nicht alle geschlagenen Figuren
         isCapture: lastMoveRecord?.moveType === 'capture' ||
             lastMoveRecord?.moveType === 'enpassant' ||
             moveData.capture || // Fallback für direkte moveData
@@ -172,7 +250,6 @@ const handleMove = (moveData) => {
 
     console.log('🔍 Enhanced Move Data:', enhancedMoveData)
 
-    // Sound abspielen mit erweiterten Daten
     playMoveSound(enhancedMoveData)
 
     // Engine-Antwort auslösen (falls KI-Spiel)
@@ -389,6 +466,12 @@ const handleGameStatusNotification = (status) => {
  * Keyboard-Shortcuts
  */
 const handleKeydown = (event) => {
+    // Esc: close promotion modal
+    if (event.key === 'Escape' && showPromotionModal.value) {
+        handlePromotionCancel()
+        return
+    }
+
     // Ctrl/Cmd + Z: Zug rückgängig
     if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
         event.preventDefault()
@@ -665,6 +748,15 @@ onUnmounted(() => {
         <BoardSettings
             v-if="showSettings"
             @close="closeSettings"
+        />
+
+        <PromotionModal
+            v-if="showPromotionModal"
+            :player-color="promotionData.playerColor"
+            :from-square="promotionData.fromSquare"
+            :to-square="promotionData.toSquare"
+            @promote="handlePromotionConfirm"
+            @cancel="handlePromotionCancel"
         />
     </div>
 </template>
