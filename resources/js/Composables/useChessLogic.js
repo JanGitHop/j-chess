@@ -11,7 +11,9 @@ import {
     isWhitePiece,
     isBlackPiece,
     isEmpty,
-    getPieceColor
+    getPieceColor,
+    FIFTY_MOVE_RULE,
+    THREEFOLD_REPETITION,
 } from '@/Utils/chessConstants.js'
 import {
     squareToIndices,
@@ -1055,6 +1057,151 @@ export function useChessLogic() {
         return castlingMoves[`${kingFrom}-${kingTo}`] || null
     }
 
+    /**
+     * Berechnet sowohl Halfmove Clock als auch Fullmove Number
+     * @param {string} piece - Bewegte Figur
+     * @param {string|null} capturedPiece - Geschlagene Figur (null wenn keine)
+     * @param {number} currentHalfmoveClock - Aktueller Halfmove Clock
+     * @param {number} currentFullmoveNumber - Aktuelle Vollzug-Nummer
+     * @param {string} currentPlayer - Aktueller Spieler ('white' oder 'black')
+     * @returns {object} { halfmoveClock, fullmoveNumber }
+     */
+    const calculateMoveCounters = (piece, capturedPiece, currentHalfmoveClock, currentFullmoveNumber, currentPlayer) => {
+        const halfmoveClock = (piece.toLowerCase() === 'p' || capturedPiece) ? 0 : currentHalfmoveClock + 1
+
+        const fullmoveNumber = currentPlayer === 'black' ? currentFullmoveNumber + 1 : currentFullmoveNumber
+
+        return { halfmoveClock, fullmoveNumber }
+    }
+
+    /**
+     * Prüft ob die 50-Züge-Regel erfüllt ist
+     * @param {number} halfmoveClock - Aktueller Halfmove Clock
+     * @returns {boolean} True wenn 50-Züge-Regel erfüllt ist
+     */
+    const checkFiftyMoveRule = (halfmoveClock) => {
+        return halfmoveClock >= FIFTY_MOVE_RULE.MAX_HALFMOVES
+    }
+
+    /**
+     * Prüft ob eine Warnung für die 50-Züge-Regel ausgegeben werden soll
+     * @param {number} halfmoveClock - Aktueller Halfmove Clock
+     * @returns {boolean} True wenn Warnung ausgegeben werden soll
+     */
+    const shouldWarnAboutFiftyMoveRule = (halfmoveClock) => {
+        return halfmoveClock >= FIFTY_MOVE_RULE.WARNING_THRESHOLD
+    }
+
+    /**
+     * 3-fache Stellungswiederholung prüfen
+     * @param {Array} positionHistory - Array von FEN-Position-Keys
+     * @returns {boolean} - True wenn 3-fache Wiederholung erreicht
+     */
+    const checkThreefoldRepetition = (positionHistory) => {
+        if (!Array.isArray(positionHistory) || positionHistory.length < 3) {
+            return false
+        }
+
+        const positionCounts = {}
+
+        positionHistory.forEach(position => {
+            if (position) {
+                positionCounts[position] = (positionCounts[position] || 0) + 1
+            }
+        })
+
+        const maxRepetitions = Math.max(...Object.values(positionCounts))
+
+        console.log('🔄 Stellungswiederholung Check:', {
+            positionsTracked: positionHistory.length,
+            uniquePositions: Object.keys(positionCounts).length,
+            maxRepetitions,
+            isThreefold: maxRepetitions >= THREEFOLD_REPETITION.REPETITION_LIMIT
+        })
+
+        return maxRepetitions >= THREEFOLD_REPETITION.REPETITION_LIMIT
+    }
+
+    /**
+     * Anzahl Wiederholungen für eine bestimmte Position
+     * @param {string} position - FEN-Position (nur Brett-Teil)
+     * @param {Array} positionHistory - Array von FEN-Positionen
+     * @returns {number} - Anzahl der Wiederholungen
+     */
+    const getPositionRepetitionCount = (position, positionHistory) => {
+        if (!position || !Array.isArray(positionHistory)) {
+            return 0
+        }
+
+        return positionHistory.filter(pos => pos === position).length
+    }
+
+    /**
+     * Warnung für nahende Stellungswiederholung
+     * @param {Array} positionHistory - Array von FEN-Positionen
+     * @returns {object|null} - Warninginformationen oder null
+     */
+    const shouldWarnThreefoldRepetition = (positionHistory) => {
+        if (!Array.isArray(positionHistory) || positionHistory.length < 2) {
+            return null
+        }
+
+        const positionCounts = {}
+        positionHistory.forEach(position => {
+            if (position) {
+                positionCounts[position] = (positionCounts[position] || 0) + 1
+            }
+        })
+
+        // Aktuelle Position (letzte in der History)
+        const currentPosition = positionHistory[positionHistory.length - 1]
+        if (!currentPosition) return null
+
+        const currentCount = positionCounts[currentPosition] || 0
+
+        // Warnung ab 2. Wiederholung
+        if (currentCount >= THREEFOLD_REPETITION.WARN_AT_REPETITION) {
+            return {
+                position: currentPosition,
+                currentCount,
+                repetitionsUntilDraw: THREEFOLD_REPETITION.REPETITION_LIMIT - currentCount,
+                nextRepetitionCausesDraw: currentCount >= 2,
+                isWarning: currentCount === 2,
+                isCritical: currentCount >= 2
+            }
+        }
+
+        return null
+    }
+
+    /**
+     * FEN-Position für Wiederholungs-Tracking erstellen
+     * Nur Brett + aktiver Spieler + Rochade + En-Passant (ohne Halbzug-Zähler)
+     * @param {string} fullFen - Vollständiger FEN-String
+     * @returns {string} - Reduzierter FEN für Position-Tracking
+     */
+    const createPositionKey = (fullFen) => {
+        if (!fullFen || typeof fullFen !== 'string') {
+            return null
+        }
+
+        try {
+            const fenParts = fullFen.split(' ')
+            if (fenParts.length < 4) {
+                console.warn('Ungültiger FEN für Position-Key:', fullFen)
+                return null
+            }
+
+            // Brett + Spieler + Rochade + En-Passant (ohne Halbzug-Counter und Vollzug-Nummer)
+            const positionKey = fenParts.slice(0, 4).join(' ')
+
+            return positionKey
+        } catch (error) {
+            console.error('Fehler beim Erstellen des Position-Keys:', error)
+            return null
+        }
+    }
+
     // ===== PUBLIC API =====
     return {
         // Move Generation
@@ -1084,6 +1231,13 @@ export function useChessLogic() {
 
         requiresPromotion,
         getValidPromotionPieces,
+        calculateMoveCounters,
+        checkFiftyMoveRule,
+        shouldWarnAboutFiftyMoveRule,
+        checkThreefoldRepetition,
+        getPositionRepetitionCount,
+        shouldWarnThreefoldRepetition,
+        createPositionKey,
 
         getAttackingPieces,
         getCastlingRookMove,

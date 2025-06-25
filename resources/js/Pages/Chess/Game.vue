@@ -11,6 +11,7 @@ import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
 import { useSounds } from "../../Composables/useSounds.js";
+import { GAME_STATUS, FIFTY_MOVE_RULE } from '@/Utils/chessConstants.js'
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 
 // Props (falls über Inertia.js übergeben)
@@ -448,8 +449,11 @@ const handleGameStatusNotification = (status) => {
     const messages = {
         'CHECK': { type: 'warning', message: 'Schach!' },
         'CHECKMATE': { type: 'error', message: 'Schachmatt!' },
-        'STALEMATE': { type: 'info', message: 'Patt!' },
-        'DRAW': { type: 'info', message: 'Unentschieden!' },
+        'STALEMATE': { type: 'info', message: 'Patt - Unentschieden!' },
+        'DRAW_FIFTY_MOVE': { type: 'info', message: '50-Züge-Regel - Unentschieden!' },
+        'DRAW_REPETITION': { type: 'info', message: 'Stellungswiederholung - Unentschieden!' },
+        'DRAW_AGREEMENT': { type: 'info', message: 'Remis vereinbart!' },
+        'DRAW_INSUFFICIENT': { type: 'info', message: 'Ungenügend Material - Unentschieden!' },
         'WAITING': { type: 'info', message: 'Warten auf Spieler...' }
     }
 
@@ -457,7 +461,8 @@ const handleGameStatusNotification = (status) => {
     if (notification) {
         addNotification({
             ...notification,
-            duration: 3000
+            duration: isDrawStatus(status) || status === 'STALEMATE' ? 5000 : 3000,
+            persistent: ['CHECKMATE', 'STALEMATE'].includes(status) || isDrawStatus(status)
         })
     }
 }
@@ -498,15 +503,36 @@ const handleKeydown = (event) => {
 
 // ===== WATCHERS =====
 
-// Fullscreen-Status überwachen
+// Fullscreen-Status
 watch(isFullscreen, (newValue) => {
     document.body.classList.toggle('fullscreen', newValue)
 })
 
-// Game Mode Änderungen
+// Game Mode
 watch(() => props.gameMode, (newMode) => {
     gameStore.setGameMode(newMode)
 }, { immediate: true })
+
+/**
+ * 50-Züge-Regel
+ */
+watch(() => gameStore.halfmoveClock, (newHalfmoves, oldHalfmoves) => {
+    // WARNING approaching 50-moves rule
+    if (gameStore.shouldWarnFiftyMoveRule() && newHalfmoves >= FIFTY_MOVE_RULE.WARNING_THRESHOLD) {
+        const movesLeft = gameStore.getMovesUntilFiftyMoveRule()
+
+        addNotification({
+            type: movesLeft <= 5 ? 'error' : 'warning',
+            message: `⚠️ 50-Züge-Regel: Nur noch ${movesLeft} Züge bis Remis!`,
+            duration: movesLeft <= 5 ? 5000 : 3000,
+            persistent: movesLeft <= 2
+        })
+
+        if (soundEnabled.value) {
+            playUISound('warning')
+        }
+    }
+})
 
 // ===== LIFECYCLE =====
 

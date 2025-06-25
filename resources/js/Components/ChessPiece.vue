@@ -82,21 +82,17 @@ const handleClick = (event) => {
     if (!props.interactive) return
 
     event.stopPropagation()
-    console.log('🎯 ChessPiece: Click auf', props.piece, props.square)
 
-    // Konsistente Event-Datenstruktur
     emit('click', event, props.piece, props.square)
 }
 
 const handleDragStart = (event) => {
-    console.log('🎯 ChessPiece: Drag start', props.piece, props.square)
 
     if (!props.isDraggable || !props.interactive) {
         event.preventDefault()
         return
     }
 
-    // Konsistente Event-Datenstruktur (gleich wie im Board)
     emit('dragstart', event, props.piece, props.square)
 }
 

@@ -39,13 +39,16 @@ export const PLAYER_COLORS = {
 }
 
 export const GAME_STATUS = {
-    WAITING: 'waiting',
-    ACTIVE: 'active',
-    CHECK: 'check',
-    CHECKMATE: 'checkmate',
-    STALEMATE: 'stalemate',
-    DRAW: 'draw',
-    RESIGNED: 'resigned'
+    WAITING: 'WAITING',
+    ACTIVE: 'ACTIVE',
+    CHECK: 'CHECK',
+    CHECKMATE: 'CHECKMATE',
+    STALEMATE: 'STALEMATE',
+    DRAW_FIFTY_MOVE: 'DRAW_FIFTY_MOVE',
+    DRAW_REPETITION: 'DRAW_REPETITION',
+    DRAW_AGREEMENT: 'DRAW_AGREEMENT',
+    DRAW_INSUFFICIENT: 'DRAW_INSUFFICIENT',
+    RESIGNED: 'RESIGNED'
 }
 
 export const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -86,6 +89,26 @@ export const isPieceOwnedByPlayer = (piece, currentPlayer) => {
     return pieceColor === currentPlayer
 }
 
+export const isDrawStatus = (status) => {
+    return status && status.startsWith('DRAW_')
+}
+
+export const THREEFOLD_REPETITION = {
+    REPETITION_LIMIT: 3,     // 3-mal = Remis
+    WARN_AT_REPETITION: 2,   // Warnung ab 2. Wiederholung
+    POSITIONS_TO_TRACK: 150, // Maximale Anzahl Positionen im Speicher
+    FIVEFOLD_THRESHOLD: 5,   // 5-mal = automatisches Remis (FIDE-Regel)
+
+    RELEVANT_FEN_PARTS: {
+        POSITION: true,
+        ACTIVE_PLAYER: true,
+        CASTLING: true,
+        EN_PASSANT: true,
+        HALFMOVE_CLOCK: false,
+        FULLMOVE_NUMBER: false
+    }
+}
+
 // Board validation
 export const isValidSquare = (file, rank) => {
     return FILES.includes(file) && RANKS.includes(rank)
@@ -100,4 +123,9 @@ export const squareToCoords = (square) => {
 
 export const coordsToSquare = (file, rank) => {
     return isValidSquare(file, rank) ? `${file}${rank}` : null
+}
+
+export const FIFTY_MOVE_RULE = {
+    MAX_HALFMOVES: 100,
+    WARNING_THRESHOLD: 90
 }

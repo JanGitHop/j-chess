@@ -7,7 +7,16 @@ import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
 import {useFenParser} from '@/Composables/useFenParser.js'
 import {useChessLogic} from '@/Composables/useChessLogic.js'
-import {GAME_STATUS, isEmpty, isPieceOwnedByPlayer, isWhitePiece, PLAYER_COLORS} from '@/Utils/chessConstants.js'
+import {
+    INITIAL_FEN,
+    PLAYER_COLORS,
+    GAME_STATUS,
+    FIFTY_MOVE_RULE,
+    THREEFOLD_REPETITION,
+    isPieceOwnedByPlayer,
+    isEmpty,
+    isWhitePiece
+} from '@/Utils/chessConstants.js'
 import {cloneBoard, getPieceColor, indicesToSquare, squareToIndices} from '@/Utils/chessUtils.js'
 
 export const useGameStore = defineStore('game', () => {
@@ -40,6 +49,7 @@ export const useGameStore = defineStore('game', () => {
     const legalMoves = ref([])
     const moveHistory = ref([])
     const lastMove = ref(null)
+    const positionHistory = ref([]) // for repetition
 
     // Drag & Drop state
     const draggedPiece = ref(null)
@@ -119,7 +129,8 @@ export const useGameStore = defineStore('game', () => {
         // Move data
         moveHistory: moveHistory.value,
         lastMove: lastMove.value,
-        capturedPieces: capturedPieces.value
+        capturedPieces: capturedPieces.value,
+        positionHistory: positionHistory.value
     }))
 
     const getCurrentGameState = () => {
@@ -192,6 +203,8 @@ export const useGameStore = defineStore('game', () => {
             clearSelection()
             moveHistory.value = []
             lastMove.value = null
+            positionHistory.value = []
+            addPositionToHistory(INITIAL_FEN)
 
             // Game mechanics zurücksetzen
             isInCheck.value = false
@@ -222,6 +235,9 @@ export const useGameStore = defineStore('game', () => {
 
             gameId.value = gameInfo.gameId || gameId.value
             gameStatus.value = gameInfo.status || GAME_STATUS.ACTIVE
+
+            positionHistory.value = []
+            addPositionToHistory(fenString)
 
             clearSelection()
 
@@ -301,7 +317,80 @@ export const useGameStore = defineStore('game', () => {
         }
     }
 
-    // Neue Funktion für Schach-Erkennung:
+    const addPositionToHistory = (fen) => {
+        try {
+            const positionKey = chessLogic.createPositionKey(fen)
+            if (!positionKey) {
+                console.warn('Kein gültiger Position-Key erstellt für FEN:', fen)
+                return
+            }
+
+            positionHistory.value.push(positionKey)
+
+            // Speicher begrenzen - alte Positionen entfernen
+            if (positionHistory.value.length > THREEFOLD_REPETITION.POSITIONS_TO_TRACK) {
+                positionHistory.value.shift() // Entferne älteste Position
+            }
+
+            console.log('📍 Position zur History hinzugefügt:', {
+                positionKey,
+                historyLength: positionHistory.value.length
+            })
+        } catch (error) {
+            console.error('Fehler beim Hinzufügen zur Position-History:', error)
+        }
+    }
+
+    /**
+     * ✅ NEU: 3-fache Stellungswiederholung prüfen
+     * @returns {boolean} - True wenn Remis durch Wiederholung
+     */
+    const checkForThreefoldRepetition = () => {
+        try {
+            const isThreefold = chessLogic.checkThreefoldRepetition(positionHistory.value)
+
+            if (isThreefold) {
+                gameStatus.value = GAME_STATUS.DRAW_REPETITION
+                console.log('🔄 3-FACHE STELLUNGSWIEDERHOLUNG: Das Spiel endet unentschieden')
+                return true
+            }
+
+            return false
+        } catch (error) {
+            console.error('Fehler bei Stellungswiederholung-Check:', error)
+            return false
+        }
+    }
+
+    /**
+     * ✅ NEU: Warnung für nahende Stellungswiederholung
+     * @returns {object|null} - Warninginformationen
+     */
+    const shouldWarnThreefoldRepetition = () => {
+        try {
+            return chessLogic.shouldWarnThreefoldRepetition(positionHistory.value)
+        } catch (error) {
+            console.error('Fehler bei Stellungswiederholung-Warnung:', error)
+            return null
+        }
+    }
+
+    /**
+     * ✅ NEU: Anzahl Wiederholungen der aktuellen Position
+     * @returns {number}
+     */
+    const getCurrentPositionRepetitionCount = () => {
+        try {
+            const currentKey = chessLogic.createPositionKey(currentFen.value)
+            if (!currentKey) return 0
+
+            return chessLogic.getPositionRepetitionCount(currentKey, positionHistory.value)
+        } catch (error) {
+            console.error('Fehler bei Position-Wiederholung-Count:', error)
+            return 0
+        }
+    }
+
     const checkForCheck = () => {
         const kingSquare = chessLogic.findKing(currentBoard.value, currentPlayer.value)
         if (!kingSquare) return false
@@ -372,6 +461,35 @@ export const useGameStore = defineStore('game', () => {
         return isStalemate
     }
 
+    const checkForFiftyMoveRule = () => {
+        const currentHalfmoves = halfmoveClock.value
+
+        if (chessLogic.checkFiftyMoveRule(currentHalfmoves)) {
+            gameStatus.value = GAME_STATUS.DRAW_FIFTY_MOVE
+            console.log('🔄 50-ZÜGE-REGEL: Das Spiel endet unentschieden (Halfmoves:', currentHalfmoves, ')')
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Warnung für nahende 50-Züge-Regel
+     * @returns {boolean} True wenn Warnung ausgegeben werden sollte
+     */
+    const shouldWarnFiftyMoveRule = () => {
+        return chessLogic.shouldWarnAboutFiftyMoveRule(halfmoveClock.value)
+    }
+
+    /**
+     * Züge bis 50-Züge-Regel berechnen
+     * @returns {number} Anzahl verbleibender Vollzüge bis zur Regel
+     */
+    const getMovesUntilFiftyMoveRule = () => {
+        const remainingHalfmoves = FIFTY_MOVE_RULE.MAX_HALFMOVES - halfmoveClock.value
+        return Math.ceil(remainingHalfmoves / 2) // Halbzüge zu Vollzügen
+    }
+
     /**
      * Zug versuchen auszuführen
      * @param {string} fromSquare
@@ -406,7 +524,6 @@ export const useGameStore = defineStore('game', () => {
                 return { success: false, error: 'Nicht Ihre Figur' }
             }
 
-            // ✅ PROMOTION-CHECK HIER HINZUGEFÜGT
             if (!options.promotion && chessLogic.requiresPromotion(fromSquare, toSquare, piece)) {
                 console.log('🎯 attemptMove: Promotion erkannt!', { fromSquare, toSquare, piece })
 
@@ -419,7 +536,6 @@ export const useGameStore = defineStore('game', () => {
                 }
             }
 
-            // Prüfe ob Zug legal ist
             const allLegalMoves = chessLogic.generateLegalMovesForSquare(
                 fromSquare,
                 currentBoard.value,
@@ -434,14 +550,67 @@ export const useGameStore = defineStore('game', () => {
             }
 
             if (options.promotion) {
-                return executePromotionMove(fromSquare, toSquare, options.promotion)
+                const moveResult = executePromotionMove(fromSquare, toSquare, options.promotion)
+
+                if (moveResult.success) {
+                    performPostMoveChecks()
+                }
+
+                return moveResult
             } else {
-                return executeMove(fromSquare, toSquare)
+                const moveResult = executeMove(fromSquare, toSquare)
+
+                if (moveResult.success) {
+                    performPostMoveChecks()
+                }
+
+                return moveResult
             }
 
         } catch (error) {
             console.error('Fehler bei attemptMove:', error)
             return { success: false, error: error.message }
+        }
+    }
+
+    /**
+     * checks:
+     * check
+     * checkmate
+     * stalemate
+     * threefold-repetition
+     * fifty-moves-rule
+     */
+    const performPostMoveChecks = () => {
+        addPositionToHistory(currentFen.value)
+
+        // Check > Mate > Stalemate > Fifty-Move
+        checkForCheck()
+
+        if (!isGameActive.value) return
+
+        const checkmateResult = checkForCheckmate()
+        if (checkmateResult) {
+            console.log('🎯 Schachmatt erkannt, Spiel beendet')
+            return
+        }
+
+        const stalemateResult = checkForStalemate()
+        if (stalemateResult) {
+            console.log('🎯 Patt erkannt, Spiel beendet')
+            return
+        }
+
+        const repetitionResult = checkForThreefoldRepetition()
+        if (repetitionResult) {
+            console.log('🎯 3-fache Stellungswiederholung erkannt, Spiel beendet')
+            return
+        }
+
+        const fiftyMoveResult = checkForFiftyMoveRule()
+        if (fiftyMoveResult) {
+            console.log('🎯 50-Züge-Regel erfüllt, Spiel beendet')
+            return
         }
     }
 
@@ -479,7 +648,7 @@ export const useGameStore = defineStore('game', () => {
             throw new Error('Illegaler Zug')
         }
 
-        console.log('🎯 executeMove - gefundener Move:', targetMove)
+        console.log('🎯 executeMove - Move:', targetMove)
 
         const tempBoard = cloneBoard(currentBoard.value)
 
@@ -545,20 +714,26 @@ export const useGameStore = defineStore('game', () => {
         }
 
         const currentCastlingRights = castlingRights.value
-        const currentHalfmoveClock = halfmoveClock.value
-        const currentFullmoveNumber = fullmoveNumber.value
+        const moveCounters = chessLogic.calculateMoveCounters(
+            piece,
+            targetPiece,
+            halfmoveClock.value,
+            fullmoveNumber.value,
+            currentPlayer.value
+        )
 
-        const newFullmoveNumber = currentPlayer.value === 'black'
-            ? currentFullmoveNumber + 1
-            : currentFullmoveNumber
+        console.log('🕐 Move Counters:', {
+            halfmove: `${halfmoveClock.value} -> ${moveCounters.halfmoveClock}`,
+            fullmove: `${fullmoveNumber.value} -> ${moveCounters.fullmoveNumber}`
+        })
 
         const newFen = generateFen(
             tempBoard,
             nextPlayer,
             currentCastlingRights,
             newEnPassantSquare,
-            currentHalfmoveClock,
-            newFullmoveNumber
+            moveCounters.halfmoveClock,
+            moveCounters.fullmoveNumber
         )
 
         console.log('🎯 Neue FEN:', newFen)
@@ -637,19 +812,21 @@ export const useGameStore = defineStore('game', () => {
             const currentHalfmoveClock = halfmoveClock.value
             const currentFullmoveNumber = fullmoveNumber.value
 
-            const newFullmoveNumber = currentPlayer.value === 'black'
-                ? currentFullmoveNumber + 1
-                : currentFullmoveNumber
-
-            const newHalfmoveClock = (!isEmpty(targetPiece)) ? 0 : currentHalfmoveClock + 1
+            const moveCounters = chessLogic.calculateMoveCounters(
+                piece,
+                targetPiece,
+                halfmoveClock.value,
+                fullmoveNumber.value,
+                currentPlayer.value
+            )
 
             const newFen = generateFen(
                 tempBoard,
                 nextPlayer,
                 currentCastlingRights,
                 null,
-                newHalfmoveClock,
-                newFullmoveNumber
+                moveCounters.halfmoveClock,
+                moveCounters.fullmoveNumber
             )
 
             console.log('🎯 Neue FEN nach Promotion:', newFen)
@@ -797,5 +974,14 @@ export const useGameStore = defineStore('game', () => {
         checkForCheck,
         checkForCheckmate,
         checkForStalemate,
+        checkForFiftyMoveRule,
+        shouldWarnFiftyMoveRule,
+        getMovesUntilFiftyMoveRule,
+        halfmoveClock,
+        performPostMoveChecks,
+        checkForThreefoldRepetition,
+        shouldWarnThreefoldRepetition,
+        getCurrentPositionRepetitionCount,
+        positionHistory
     }
 })

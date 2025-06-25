@@ -1,6 +1,8 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { usePieceStore } from '@/Stores/pieceStore.js'
+import { useGameStore } from '@/Stores/gameStore.js'
+import { isDrawStatus } from '@/Utils/chessConstants.js'
 
 const props = defineProps({
     gameState: {
@@ -34,8 +36,9 @@ const props = defineProps({
     }
 })
 
-// ✅ PIECE STORE FÜR SVG-BILDER
+// stores
 const pieceStore = usePieceStore()
+const gameStore = useGameStore()
 
 // Timer State
 const whiteTime = ref(props.timeControl.initialTime || 0)
@@ -78,6 +81,35 @@ const players = computed(() => ({
         materialAdvantage: calculateMaterialAdvantage('black')
     }
 }))
+
+const fiftyMoveInfo = computed(() => {
+    const halfmoves = gameStore.halfmoveClock
+    const movesUntil50 = gameStore.getMovesUntilFiftyMoveRule()
+    const shouldWarn = gameStore.shouldWarnFiftyMoveRule()
+
+    return {
+        halfmoves,
+        movesUntil50,
+        shouldWarn,
+        isNear: movesUntil50 <= 10,
+        isCritical: movesUntil50 <= 5
+    }
+})
+
+const threefoldInfo = computed(() => {
+    const warning = gameStore.shouldWarnThreefoldRepetition()
+    const currentCount = gameStore.getCurrentPositionRepetitionCount()
+
+    return {
+        warning,
+        currentCount,
+        shouldShow: warning !== null || currentCount >= 2,
+        repetitionsLeft: warning ? warning.repetitionsUntilDraw : (3 - currentCount),
+        isWarning: currentCount === 2,
+        isCritical: currentCount >= 3,
+        isNear: currentCount >= 2
+    }
+})
 
 /**
  * Zeit formatiert anzeigen
@@ -122,9 +154,6 @@ const getTimeStyle = (timeInSeconds) => {
     }
 }
 
-/**
- * ✅ MATERIAL-VORTEIL BERECHNEN (KORRIGIERT)
- */
 const calculateMaterialAdvantage = (color) => {
     if (!props.gameState.capturedPieces) return 0
 
@@ -137,13 +166,11 @@ const calculateMaterialAdvantage = (color) => {
     const oppCaptured = props.gameState.capturedPieces[color] || []
 
     const myValue = myCaptured.reduce((sum, piece) => {
-        // ✅ KORREKTE BEHANDLUNG VON PIECE-OBJEKTEN
         const pieceType = typeof piece === 'string' ? piece : piece.type
         return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
     }, 0)
 
     const oppValue = oppCaptured.reduce((sum, piece) => {
-        // ✅ KORREKTE BEHANDLUNG VON PIECE-OBJEKTEN
         const pieceType = typeof piece === 'string' ? piece : piece.type
         return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
     }, 0)
@@ -380,7 +407,6 @@ $: watchGameActive && updateTimerState()
                 </div>
             </div>
 
-            <!-- ✅ GESCHLAGENE FIGUREN MIT SVG-BILDERN -->
             <div v-if="showCapturedPieces && players.black.capturedPieces.length > 0" class="captured-pieces">
                 <div class="captured-pieces-title">Geschlagen:</div>
                 <div class="captured-pieces-list">
@@ -409,30 +435,75 @@ $: watchGameActive && updateTimerState()
                 <span class="status-label">Zug:</span>
                 <span class="status-value">{{ Math.ceil(gameState.moveCount / 2) || 1 }}</span>
             </div>
+
+            <!-- 3-fache Stellungswiederholung -->
+            <div v-if="threefoldInfo.shouldShow" class="status-item status-item--repetition">
+            <span class="status-label">
+                <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                </svg>
+                Wiederholung:
+            </span>
+                <span
+                    class="status-value"
+                    :class="{
+                    'text-yellow-600 font-semibold': threefoldInfo.isWarning,
+                    'text-red-600 font-bold animate-pulse': threefoldInfo.isCritical,
+                    'text-orange-500': threefoldInfo.currentCount === 1
+                }"
+                    :title="`Stellungswiederholung: ${threefoldInfo.currentCount}/3 - ${threefoldInfo.repetitionsLeft} bis Remis`"
+                >
+                {{ threefoldInfo.currentCount }}/3
+                <span v-if="threefoldInfo.isCritical" class="ml-1 text-xs">⚠️</span>
+            </span>
+            </div>
+
+            <!-- 50-Züge-Regel -->
+            <div v-if="fiftyMoveInfo.shouldWarn" class="status-item status-item--fifty-move">
+                <span class="status-label">Züge bis Remis:</span>
+                <span
+                    class="status-value"
+                    :class="{
+                        'text-yellow-600': fiftyMoveInfo.isNear && !fiftyMoveInfo.isCritical,
+                        'text-red-600': fiftyMoveInfo.isCritical,
+                        'text-orange-500': !fiftyMoveInfo.isNear
+                    }"
+                    :title="`50-Züge-Regel: ${fiftyMoveInfo.halfmoves}/100 Halbzüge`"
+                >
+                    {{ fiftyMoveInfo.movesUntil50 }}
+                </span>
+            </div>
+
             <div class="status-item">
                 <span class="status-label">Status:</span>
                 <span class="status-value" :class="{
-                    'text-green-600': gameState.isGameActive,
-                    'text-red-600': !gameState.isGameActive && gameState.status === 'CHECKMATE',
-                    'text-yellow-600': !gameState.isGameActive && gameState.status === 'STALEMATE',
-                    'text-gray-600': !gameState.isGameActive && gameState.status === 'DRAW'
-                }">
-                    <template v-if="gameState.isGameActive">
-                        {{ gameState.isInCheck ? 'Schach' : 'Aktiv' }}
-                    </template>
-                    <template v-else-if="gameState.status === 'CHECKMATE'">
-                        Schachmatt
-                    </template>
-                    <template v-else-if="gameState.status === 'STALEMATE'">
-                        Patt
-                    </template>
-                    <template v-else-if="gameState.status === 'DRAW'">
-                        Remis
-                    </template>
-                    <template v-else>
-                        Beendet
-                    </template>
-                </span>
+                'text-green-600': gameState.isGameActive,
+                'text-red-600': !gameState.isGameActive && gameState.status === 'CHECKMATE',
+                'text-yellow-600': !gameState.isGameActive && gameState.status === 'STALEMATE',
+                'text-blue-600': !gameState.isGameActive && isDrawStatus(gameState.status)
+            }">
+                <template v-if="gameState.isGameActive">
+                    {{ gameState.isInCheck ? 'Schach' : 'Aktiv' }}
+                </template>
+                <template v-else-if="gameState.status === 'CHECKMATE'">
+                    Schachmatt
+                </template>
+                <template v-else-if="gameState.status === 'STALEMATE'">
+                    Patt
+                </template>
+                <template v-else-if="gameState.status === 'DRAW_FIFTY_MOVE'">
+                    Remis (50-Züge)
+                </template>
+                <template v-else-if="gameState.status === 'DRAW_REPETITION'">
+                    Remis (Wiederholung)
+                </template>
+                <template v-else-if="isDrawStatus(gameState.status)">
+                    Remis
+                </template>
+                <template v-else>
+                    Beendet
+                </template>
+            </span>
             </div>
         </div>
 
@@ -758,7 +829,7 @@ $: watchGameActive && updateTimerState()
     width: 26px;  /* Angepasst an den kleineren Container */
     height: 26px;
     object-fit: contain;
-    image-rendering: -webkit-optimize-contrast;
+    /*image-rendering: -webkit-optimize-contrast;*/
     image-rendering: crisp-edges;
 }
 
@@ -778,7 +849,7 @@ $: watchGameActive && updateTimerState()
     height: 28px; /* Größer: von 18px auf 28px */
     object-fit: contain;
     /* Bessere Darstellung der SVGs */
-    image-rendering: -webkit-optimize-contrast;
+    /*image-rendering: -webkit-optimize-contrast;*/
     image-rendering: crisp-edges;
 }
 
@@ -799,7 +870,57 @@ $: watchGameActive && updateTimerState()
     color: #68d391; /* Helleres Grün für bessere Lesbarkeit */
 }
 
+.status-item--fifty-move {
+    animation: fifty-move-warning 2s ease-in-out infinite;
+}
+
+.status-item--fifty-move .status-label {
+    font-weight: 600;
+}
+
+.status-item--repetition {
+    transition: all 300ms ease;
+}
+
+.status-item--repetition .status-label {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.status-item--repetition:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    border-radius: 4px;
+    padding: 2px 4px;
+}
 /* Animationen */
+
+@keyframes fifty-move-warning {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes repetition-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+.status-item--repetition .animate-pulse {
+    animation: repetition-pulse 1.5s ease-in-out infinite;
+}
+
 @keyframes turn-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
@@ -864,6 +985,16 @@ $: watchGameActive && updateTimerState()
     .captured-piece-image {
         width: 16px;
         height: 16px;
+    }
+
+    .game-status-info {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    .status-item--fifty-move .status-label {
+        font-size: 0.75rem;
     }
 }
 
