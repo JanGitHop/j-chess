@@ -73,7 +73,7 @@ export function useChessLogic() {
      * @param {object} gameState - Zusätzliche Spielinformationen
      * @returns {Array} Array von möglichen Zügen
      */
-    const generatePossibleMoves = (piece, square, board, gameState = {}) => {
+    const generatePossibleMoves = (piece, square, board, gameState = {}, context = {}) => {
         if (isEmpty(piece) || !board.length) return []
 
         const pieceType = piece.toLowerCase()
@@ -84,7 +84,7 @@ export function useChessLogic() {
             case 'n': return generateKnightMoves(piece, square, board)
             case 'b': return generateBishopMoves(piece, square, board)
             case 'q': return generateQueenMoves(piece, square, board)
-            case 'k': return generateKingMoves(piece, square, board, gameState)
+            case 'k': return generateKingMoves(piece, square, board, gameState, context)
             default: return []
         }
     }
@@ -352,14 +352,14 @@ export function useChessLogic() {
     }
 
     /**
-     * König-Züge generieren
+     * König-Züge generieren (KORRIGIERT mit gameState)
      * @param {string} piece
      * @param {string} square
      * @param {Array} board
      * @param {object} gameState
      * @returns {Array}
      */
-    const generateKingMoves = (piece, square, board, gameState) => {
+    const generateKingMoves = (piece, square, board, gameState = {}, context = {}) => {
         const moves = []
         const indices = squareToIndices(square)
         if (!indices) return moves
@@ -409,13 +409,20 @@ export function useChessLogic() {
             }
         })
 
-        // Rochade (vereinfacht - ohne Check-Prüfung)
-        if (gameState.castlingRights) {
-            moves.push(...generateCastlingMoves(piece, square, board, gameState.castlingRights))
+        if (!context.skipCastling && gameState.castlingRights && gameState.currentPlayer) {
+            moves.push(...generateCastlingMoves(
+                piece,
+                square,
+                board,
+                gameState.castlingRights,
+                gameState.currentPlayer,
+                gameState
+            ))
         }
 
         return moves
     }
+
 
     // ===== HELPER FUNCTIONS =====
 
@@ -476,50 +483,92 @@ export function useChessLogic() {
         return moves
     }
 
+
     /**
-     * Rochade-Züge generieren (vereinfacht)
-     * @param {string} piece
-     * @param {string} square
-     * @param {Array} board
-     * @param {object} castlingRights
-     * @returns {Array}
+     * Rochade-Züge generieren
+     * @param {string} piece - König ('K' oder 'k')
+     * @param {string} square - Königsposition (z.B. 'e1' oder 'e8')
+     * @param {Array} board - 2D Brett-Array
+     * @param {object} castlingRights - Rochade-Rechte als Objekt
+     * @param {string} currentPlayer - Aktueller Spieler ('white' oder 'black')
+     * @param {object} gameState - Vollständiger Spielzustand
+     * @returns {Array} Array von gültigen Rochade-Zügen
      */
-    const generateCastlingMoves = (piece, square, board, castlingRights) => {
+    const generateCastlingMoves = (piece, square, board, castlingRights, currentPlayer, gameState = {}) => {
         const moves = []
+
+        if (!castlingRights) {
+            return moves
+        }
+
         const isWhite = isWhitePiece(piece)
+        const pieceColor = isWhite ? 'white' : 'black'
 
-        // Kurze Rochade
-        if ((isWhite && castlingRights.whiteKingside) ||
-            (!isWhite && castlingRights.blackKingside)) {
+        // Validierung: König muss auf Startposition stehen
+        const expectedKingSquare = isWhite ? 'e1' : 'e8'
+        if (square !== expectedKingSquare) {
+            return moves
+        }
 
+        const oppositePlayer = pieceColor === 'white' ? 'black' : 'white'
+        const attackersOnKing = getAttackingPieces(square, oppositePlayer, board, gameState, { skipCastling: true })
+
+        if (attackersOnKing.length > 0) {
+            console.log('🚫 Rochade nicht möglich: König steht im Schach')
+            return moves
+        }
+
+        // Kurze Rochade (Königsseite)
+        const canCastleKingside = isWhite ? castlingRights.whiteKingside : castlingRights.blackKingside
+        if (canCastleKingside) {
             const kingsideTarget = isWhite ? 'g1' : 'g8'
-            const pathSquares = isWhite ? ['f1', 'g1'] : ['f8', 'g8']
+            const pathSquares = isWhite ? ['f1', 'g1'] : ['f8', 'g8'] // Alle Felder die der König durchläuft
+            const rookSquare = isWhite ? 'h1' : 'h8'
+            const expectedRook = isWhite ? 'R' : 'r'
 
-            if (isCastlingPathClear(pathSquares, board)) {
+            if (isCastlingPathClear(pathSquares, board) &&
+                hasPieceOnSquare(board, rookSquare, expectedRook) &&
+                isCastlingPathSafe(pathSquares, board, oppositePlayer, gameState)) {
+
                 moves.push({
                     from: square,
                     to: kingsideTarget,
                     type: 'castle',
                     piece,
-                    castleType: 'kingside'
+                    castleType: 'kingside',
+                    rookMove: {
+                        from: rookSquare,
+                        to: isWhite ? 'f1' : 'f8'
+                    }
                 })
             }
         }
 
-        // Lange Rochade
-        if ((isWhite && castlingRights.whiteQueenside) ||
-            (!isWhite && castlingRights.blackQueenside)) {
-
+        // Lange Rochade (Damenseite)
+        const canCastleQueenside = isWhite ? castlingRights.whiteQueenside : castlingRights.blackQueenside
+        if (canCastleQueenside) {
             const queensideTarget = isWhite ? 'c1' : 'c8'
-            const pathSquares = isWhite ? ['d1', 'c1', 'b1'] : ['d8', 'c8', 'b8']
+            const pathSquares = isWhite ? ['d1', 'c1'] : ['d8', 'c8']
+            const rookSquare = isWhite ? 'a1' : 'a8'
+            const expectedRook = isWhite ? 'R' : 'r'
 
-            if (isCastlingPathClear(pathSquares, board)) {
+            // Für Damenseite: b1/b8 muss auch frei sein (Turm-Weg), aber König geht nicht drüber
+            const fullPathSquares = isWhite ? ['d1', 'c1', 'b1'] : ['d8', 'c8', 'b8']
+
+            if (isCastlingPathClear(fullPathSquares, board) &&
+                hasPieceOnSquare(board, rookSquare, expectedRook) &&
+                isCastlingPathSafe(pathSquares, board, oppositePlayer, gameState)) {
+
                 moves.push({
                     from: square,
                     to: queensideTarget,
                     type: 'castle',
                     piece,
-                    castleType: 'queenside'
+                    castleType: 'queenside',
+                    rookMove: {
+                        from: rookSquare,
+                        to: isWhite ? 'd1' : 'd8'
+                    }
                 })
             }
         }
@@ -528,16 +577,156 @@ export function useChessLogic() {
     }
 
     /**
-     * Prüft ob der Rochade-Weg frei ist
-     * @param {Array} squares
-     * @param {Array} board
-     * @returns {boolean}
+     * Prüft, ob Rochade-Weg sicher ist
+     * @param {Array} pathSquares - Felder, die der König durchläuft/erreicht
+     * @param {Array} board - 2D Brett-Array
+     * @param {string} attackingPlayer - Angreifende Farbe ('white' oder 'black')
+     * @param {object} gameState - Spielzustand für getAttackingPieces
+     * @returns {boolean} True wenn Weg sicher ist
      */
-    const isCastlingPathClear = (squares, board) => {
-        return squares.every(square => {
+    const isCastlingPathSafe = (pathSquares, board, attackingPlayer, gameState) => {
+        for (const square of pathSquares) {
+            const attackers = getAttackingPieces(square, attackingPlayer, board, gameState, { skipCastling: true })
+            if (attackers.length > 0) {
+                console.log(`🚫 Rochade nicht möglich: Feld ${square} wird von ${attackers.join(', ')} angegriffen`)
+                return false
+            }
+        }
+        return true
+    }
+
+    /**
+     * Prüft, ob Rochade-Weg frei ist (keine eigenen Figuren)
+     * @param {Array} pathSquares - Felder die frei sein müssen
+     * @param {Array} board - 2D Brett-Array
+     * @returns {boolean} True wenn Weg frei ist
+     */
+    const isCastlingPathClear = (pathSquares, board) => {
+        for (const square of pathSquares) {
             const indices = squareToIndices(square)
-            return indices && isEmpty(board[indices.rankIndex][indices.fileIndex])
-        })
+            if (!indices) return false
+
+            const piece = board[indices.rankIndex][indices.fileIndex]
+            if (!isEmpty(piece)) {
+                return false
+            }
+        }
+        return true
+    }
+
+    /**
+     * Prüft, ob ein Feld unter Angriff steht
+     * @param {Array} board - 2D Brett-Array
+     * @param {string} square - Zu prüfendes Feld (z.B. 'e1')
+     * @param {string} attackingPlayer - Angreifende Farbe ('white' oder 'black')
+     * @returns {boolean} True wenn Feld angegriffen wird
+     */
+    const isSquareUnderAttack = (board, square, attackingPlayer) => {
+        // Alle Figuren des angreifenden Spielers durchgehen
+        for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
+            for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
+                const piece = board[rankIndex][fileIndex]
+
+                if (isEmpty(piece)) continue
+
+                // Nur Figuren des angreifenden Spielers prüfen
+                const pieceColor = getPieceColor(piece)
+                if (pieceColor !== attackingPlayer) continue
+
+                const pieceSquare = indicesToSquare(fileIndex, rankIndex)
+                if (!pieceSquare) continue
+
+                // Einfache Angriffsprüfung für diese Figur
+                const attacks = generatePieceAttacks(piece, pieceSquare, board)
+
+                if (attacks.includes(square)) {
+                    console.log(`🎯 Feld ${square} wird von ${piece} auf ${pieceSquare} angegriffen`)
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    /**
+     * Validiert Rochade-Rechte nach einem Zug (korrigiert für Objekt-Format)
+     * @param {object} currentRights - Aktuelle Rochade-Rechte als Objekt
+     * @param {string} fromSquare - Ausgangsfeld
+     * @param {string} toSquare - Zielfeld
+     * @param {string} piece - Bewegte Figur
+     * @param {string} capturedPiece - Geschlagene Figur (falls vorhanden)
+     * @returns {object} Neue Rochade-Rechte als Objekt
+     */
+    const updateCastlingRights = (currentRights, fromSquare, toSquare, piece, capturedPiece = null) => {
+        if (!currentRights) {
+            return {
+                whiteKingside: false,
+                whiteQueenside: false,
+                blackKingside: false,
+                blackQueenside: false
+            }
+        }
+
+        // Kopie erstellen, um Original nicht zu verändern
+        const newRights = { ...currentRights }
+
+        // König wurde bewegt - alle Rochade-Rechte für diese Farbe verloren
+        if (piece && piece.toLowerCase() === 'k') {
+            const isWhite = isWhitePiece(piece)
+            if (isWhite) {
+                newRights.whiteKingside = false
+                newRights.whiteQueenside = false
+            } else {
+                newRights.blackKingside = false
+                newRights.blackQueenside = false
+            }
+        }
+
+        // Turm wurde bewegt - Rochade-Recht für diese Seite verloren
+        if (piece && piece.toLowerCase() === 'r') {
+            switch (fromSquare) {
+                case 'a1': // Weißer Damenturm bewegt
+                    newRights.whiteQueenside = false
+                    break
+                case 'h1': // Weißer Königsturm bewegt
+                    newRights.whiteKingside = false
+                    break
+                case 'a8': // Schwarzer Damenturm bewegt
+                    newRights.blackQueenside = false
+                    break
+                case 'h8': // Schwarzer Königsturm bewegt
+                    newRights.blackKingside = false
+                    break
+            }
+        }
+
+        // Turm auf Startfeld geschlagen - Rochade-Recht für diese Seite verloren
+        if (capturedPiece && capturedPiece.toLowerCase() === 'r') {
+            switch (toSquare) {
+                case 'a1': // Weißer Damenturm geschlagen
+                    newRights.whiteQueenside = false
+                    break
+                case 'h1': // Weißer Königsturm geschlagen
+                    newRights.whiteKingside = false
+                    break
+                case 'a8': // Schwarzer Damenturm geschlagen
+                    newRights.blackQueenside = false
+                    break
+                case 'h8': // Schwarzer Königsturm geschlagen
+                    newRights.blackKingside = false
+                    break
+            }
+        }
+
+        return newRights
+    }
+
+    const hasPieceOnSquare = (board, square, piece) => {
+        const indices = squareToIndices(square)
+        if (!indices) return false
+
+        return board[indices.rankIndex][indices.fileIndex] === piece
     }
 
     /**
@@ -1023,7 +1212,7 @@ export function useChessLogic() {
         })
     }
 
-    const getAttackingPieces = (targetSquare, attackingPlayer, board, gameState = {}) => {
+    const getAttackingPieces = (targetSquare, attackingPlayer, board, gameState = {}, context = {}) => {
         const attackingPieces = []
 
         for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
@@ -1035,7 +1224,7 @@ export function useChessLogic() {
                 const fromSquare = indicesToSquare(fileIndex, rankIndex)
                 if (!fromSquare) continue
 
-                const possibleMoves = generatePossibleMoves(piece, fromSquare, board, gameState)
+                const possibleMoves = generatePossibleMoves(piece, fromSquare, board, gameState, context)
 
                 if (possibleMoves.some(move => move.to === targetSquare)) {
                     attackingPieces.push(fromSquare)
@@ -1241,5 +1430,7 @@ export function useChessLogic() {
 
         getAttackingPieces,
         getCastlingRookMove,
+        updateCastlingRights,
+        hasPieceOnSquare,
     }
 }

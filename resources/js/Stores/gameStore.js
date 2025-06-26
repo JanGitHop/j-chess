@@ -714,6 +714,21 @@ export const useGameStore = defineStore('game', () => {
         }
 
         const currentCastlingRights = castlingRights.value
+        const newCastlingRights = chessLogic.updateCastlingRights(
+            currentCastlingRights,
+            fromSquare,
+            toSquare,
+            piece,
+            targetPiece
+        )
+
+        console.log('🏰 Rochade-Rechte Update:', {
+            vorher: currentCastlingRights,
+            nachher: newCastlingRights,
+            zug: `${piece} ${fromSquare}->${toSquare}`,
+            geschlagen: targetPiece || 'keine'
+        })
+
         const moveCounters = chessLogic.calculateMoveCounters(
             piece,
             targetPiece,
@@ -730,7 +745,7 @@ export const useGameStore = defineStore('game', () => {
         const newFen = generateFen(
             tempBoard,
             nextPlayer,
-            currentCastlingRights,
+            newCastlingRights,
             newEnPassantSquare,
             moveCounters.halfmoveClock,
             moveCounters.fullmoveNumber
@@ -809,6 +824,13 @@ export const useGameStore = defineStore('game', () => {
             const nextPlayer = currentPlayer.value === 'white' ? 'black' : 'white'
 
             const currentCastlingRights = castlingRights.value
+            const newCastlingRights = chessLogic.updateCastlingRights(
+                currentCastlingRights,
+                fromSquare,
+                toSquare,
+                piece,
+                targetPiece
+            )
             const currentHalfmoveClock = halfmoveClock.value
             const currentFullmoveNumber = fullmoveNumber.value
 
@@ -823,7 +845,7 @@ export const useGameStore = defineStore('game', () => {
             const newFen = generateFen(
                 tempBoard,
                 nextPlayer,
-                currentCastlingRights,
+                newCastlingRights,
                 null,
                 moveCounters.halfmoveClock,
                 moveCounters.fullmoveNumber
