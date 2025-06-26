@@ -6,12 +6,15 @@ import BoardSettings from '@/Components/BoardSettings.vue'
 import MoveHistory from '@/Components/MoveHistory.vue'
 import GameControls from '@/Components/GameControls.vue'
 import PlayerInfo from '@/Components/PlayerInfo.vue'
+import CapturedPieces from '@/Components/CapturedPieces.vue'
 import PromotionModal from '@/Components/PromotionModal.vue'
 import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
 import { useSounds } from "../../Composables/useSounds.js";
 import { GAME_STATUS, FIFTY_MOVE_RULE } from '@/Utils/chessConstants.js'
+import GameHeader from '@/Components/GameHeader.vue'
+import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 
 // Props (falls über Inertia.js übergeben)
@@ -42,6 +45,7 @@ const props = defineProps({
 const boardStore = useBoardStore()
 const gameStore = useGameStore()
 const pieceStore = usePieceStore()
+const configStore = useGameConfigStore()
 // const engineStore = useGameEngineStore()
 
 // UI State
@@ -93,11 +97,77 @@ const gameState = computed(() => ({
 }))
 
 /**
- * Board orientation based on player
+ * Board orientation based on config
  */
 const boardOrientation = computed(() => {
-    if (props.playerColor === 'both') return 'white'
-    return props.playerColor
+    return configStore.boardOrientation
+})
+
+const showCoordinates = computed(() => {
+    return configStore.showCoordinates
+})
+
+// Material-Vorteil berechnen
+const calculateMaterialAdvantage = (color) => {
+    if (!gameState.value.capturedPieces) return 0
+
+    const pieceValues = {
+        'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0
+    }
+
+    const oppColor = color === 'white' ? 'black' : 'white'
+    const myCaptured = gameState.value.capturedPieces[oppColor] || []
+    const oppCaptured = gameState.value.capturedPieces[color] || []
+
+    const myValue = myCaptured.reduce((sum, piece) => {
+        const pieceType = typeof piece === 'string' ? piece : piece.type
+        return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
+    }, 0)
+
+    const oppValue = oppCaptured.reduce((sum, piece) => {
+        const pieceType = typeof piece === 'string' ? piece : piece.type
+        return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
+    }, 0)
+
+    return myValue - oppValue
+}
+
+// Captured Pieces Data
+const capturedPiecesData = computed(() => {
+    const whiteCaptured = gameState.value.capturedPieces?.black || []
+    const blackCaptured = gameState.value.capturedPieces?.white || []
+
+    return {
+        white: {
+            pieces: whiteCaptured,
+            advantage: calculateMaterialAdvantage('white')
+        },
+        black: {
+            pieces: blackCaptured,
+            advantage: calculateMaterialAdvantage('black')
+        }
+    }
+})
+
+// Welche Captured Pieces oben/unten anzeigen (basierend auf Board-Orientation)
+const topCapturedPieces = computed(() => {
+    return boardOrientation.value === 'white'
+        ? capturedPiecesData.value.black  // Weiß oben wenn Board normal
+        : capturedPiecesData.value.white  // Schwarz oben wenn Board gedreht
+})
+
+const bottomCapturedPieces = computed(() => {
+    return boardOrientation.value === 'white'
+        ? capturedPiecesData.value.white  // Schwarz unten wenn Board normal
+        : capturedPiecesData.value.black  // Weiß unten wenn Board gedreht
+})
+
+const topPlayerColor = computed(() => {
+    return boardOrientation.value === 'white' ? 'white' : 'black'
+})
+
+const bottomPlayerColor = computed(() => {
+    return boardOrientation.value === 'white' ? 'black' : 'white'
 })
 
 /**
@@ -139,6 +209,43 @@ const handleSquareClick = (squareData) => {
         playMoveSound(squareData)
     }
 }
+
+/**
+ * MANUELLES BRETT DREHEN - mit korrekter Weiterleitung
+ */
+const handleFlipBoard = (newOrientation) => {
+    console.log('🔄 Brett manuell gedreht zu:', newOrientation)
+
+    // Wichtig: Das Brett wird bereits im Store gedreht durch flipBoard()
+    // Die newOrientation kommt aus dem Store zurück
+
+    addNotification({
+        type: 'info',
+        message: `Brett gedreht - ${newOrientation === 'white' ? 'Weiß' : 'Schwarz'} unten`,
+        duration: 2000
+    })
+}
+
+/**
+ * AUTO-REVERSE nach jedem Zug
+ */
+const performAutoReverse = () => {
+    if (!configStore.shouldAutoReverse) return
+
+    console.log('🔄 Auto-Reverse wird durchgeführt')
+
+    // Kurze Verzögerung für visuellen Effekt
+    setTimeout(() => {
+        const newOrientation = configStore.flipBoard()
+
+        addNotification({
+            type: 'info',
+            message: `🔄 Brett automatisch gedreht - ${newOrientation === 'white' ? 'Weiß' : 'Schwarz'} unten`,
+            duration: 1500
+        })
+    }, 300)
+}
+
 
 /**
  * Board Events - Piece Click
@@ -212,20 +319,62 @@ const hidePromotionDialog = () => {
     gameStore.clearSelection()
 }
 
-/**
- * Board Events - Move
- */
-const handleMove = (moveData) => {
-    console.log('Move made:', moveData)
+const handleGameModeChanged = (newMode) => {
+    console.log('🎮 Spielmodus geändert zu:', newMode)
 
-    if (moveData.needsPromotion) {
-        showPromotionDialog(moveData)
-        return
-    }
+    // Game Store updaten
+    gameStore.setGameMode(newMode)
 
-    handleMoveCompleted(moveData)
+    addNotification({
+        type: 'success',
+        message: `Spielmodus geändert zu: ${configStore.gameModeSettings.name}`,
+        duration: 2000
+    })
+}
+const handleNewGameFromHeader = () => {
+    console.log('🆕 Neues Spiel aus Header gestartet')
+    handleNewGame()
 }
 
+/**
+ * SPIEL EXPORTIEREN
+ */
+const handleExportGame = () => {
+    console.log('💾 Spiel wird exportiert')
+
+    try {
+        // PGN Export Logic hier
+        const pgn = gameStore.toPGN()
+
+        // Download auslösen
+        const blob = new Blob([pgn], { type: 'application/x-chess-pgn' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `schach-spiel-${new Date().toISOString().split('T')[0]}.pgn`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        addNotification({
+            type: 'success',
+            message: 'Spiel erfolgreich exportiert',
+            duration: 3000
+        })
+    } catch (error) {
+        console.error('Export-Fehler:', error)
+        addNotification({
+            type: 'error',
+            message: 'Fehler beim Exportieren des Spiels',
+            duration: 3000
+        })
+    }
+}
+
+/**
+ * Move Handler mit Auto-Reverse Integration
+ */
 const handleMoveCompleted = (moveData) => {
     console.log('FEN:', gameStore.currentFen)
     lastMoveTime.value = new Date()
@@ -240,7 +389,7 @@ const handleMoveCompleted = (moveData) => {
         ...moveData,
         isCapture: lastMoveRecord?.moveType === 'capture' ||
             lastMoveRecord?.moveType === 'enpassant' ||
-            moveData.capture || // Fallback für direkte moveData
+            moveData.capture ||
             (lastMoveRecord?.capturedPiece && true),
         isCastling: lastMoveRecord?.moveType === 'castle',
         isPromotion: lastMoveRecord?.moveType === 'promotion',
@@ -253,12 +402,31 @@ const handleMoveCompleted = (moveData) => {
 
     playMoveSound(enhancedMoveData)
 
+    // AUTO-REVERSE nach erfolgreichem Zug
+    if (gameStore.isGameActive) {
+        performAutoReverse()
+    }
+
     // Engine-Antwort auslösen (falls KI-Spiel)
     if (props.gameMode === 'standard' && shouldTriggerEngineMove()) {
         setTimeout(() => {
             // engineStore.makeMove()
         }, 500)
     }
+}
+
+/**
+ * Board Events - Move
+ */
+const handleMove = (moveData) => {
+    console.log('Move made:', moveData)
+
+    if (moveData.needsPromotion) {
+        showPromotionDialog(moveData)
+        return
+    }
+
+    handleMoveCompleted(moveData)
 }
 
 /**
@@ -585,82 +753,21 @@ onUnmounted(() => {
 
 <template>
     <div>
-        <Head title="J-Chess - Spiel" />
+        <Head title="J-Chess" />
 
         <div :class="layoutClasses">
             <!-- Header -->
-            <header class="game-header">
-                <div class="header-content">
-                    <div class="header-left">
-                        <h1 class="game-title">J-Chess</h1>
-                        <div class="game-status-indicator">
-                            <span
-                                class="status-dot"
-                                :class="{
-                                    'status-dot--active': gameState.isGameActive,
-                                    'status-dot--check': gameState.isInCheck,
-                                    'status-dot--finished': !gameState.isGameActive
-                                }"
-                            ></span>
-                            <span class="status-text">
-                                {{ gameState.isGameActive
-                                ? `${gameState.currentPlayer === 'white' ? 'Weiß' : 'Schwarz'} am Zug`
-                                : 'Spiel beendet'
-                                }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="header-right">
-                        <!-- Quick Actions -->
-                        <div class="quick-actions">
-                            <button
-                                @click="toggleSound"
-                                class="action-btn"
-                                :class="{ 'action-btn--active': soundEnabled }"
-                                title="Sound an/aus"
-                            >
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path v-if="soundEnabled" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.82L4.05 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.05l4.333-3.82zm2.91 2.32a1 1 0 011.414 1.414L12.414 8l1.293 1.293a1 1 0 01-1.414 1.414L11 9.414l-1.293 1.293a1 1 0 01-1.414-1.414L9.586 8 8.293 6.707a1 1 0 011.414-1.414L11 6.586l1.293-1.29z"/>
-                                    <path v-else d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.82L4.05 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.05l4.333-3.82zM16.025 5.61a1 1 0 111.95.34 6.967 6.967 0 010 8.1 1 1 0 01-1.95-.34 4.967 4.967 0 000-7.76z"/>
-                                </svg>
-                            </button>
-
-                            <button
-                                @click="toggleFullscreen"
-                                class="action-btn"
-                                :class="{ 'action-btn--active': isFullscreen }"
-                                title="Vollbild (F11)"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-                                </svg>
-                            </button>
-
-                            <button
-                                @click="toggleSidebar"
-                                class="action-btn lg:hidden"
-                                title="Sidebar umschalten"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                                </svg>
-                            </button>
-
-                            <button
-                                @click="openSettings"
-                                class="action-btn"
-                                title="Einstellungen"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <GameHeader
+                game-title="Schach"
+                :show-settings="true"
+                :show-sidebar-toggle="true"
+                @flip-board="handleFlipBoard"
+                @game-mode-changed="handleGameModeChanged"
+                @toggle-sidebar="toggleSidebar"
+                @open-settings="openSettings"
+                @new-game="handleNewGameFromHeader"
+                @export-game="handleExportGame"
+            />
 
             <!-- Notifications -->
             <div class="notifications-container">
@@ -688,9 +795,21 @@ onUnmounted(() => {
             <main class="game-main">
                 <!-- Board Area -->
                 <div class="board-area">
+                    <!-- Top Captured Pieces -->
+                    <div class="captured-pieces-top">
+                        <CapturedPieces
+                            :captured-pieces="topCapturedPieces.pieces"
+                            :player-color="topPlayerColor"
+                            :material-advantage="topCapturedPieces.advantage"
+                            size="medium"
+                            layout="horizontal"
+                        />
+                    </div>
+
                     <ChessBoard
                         :game-mode="props.gameMode"
                         :orientation="boardOrientation"
+                        :show-coordinates="showCoordinates"
                         :show-legal-moves="true"
                         :highlight-last-move="true"
                         :interactive="gameState.isGameActive"
@@ -702,6 +821,17 @@ onUnmounted(() => {
                         @checkmate="handleCheckmate"
                         @stalemate="handleStalemate"
                     />
+
+                <!-- Bottom Captured Pieces -->
+                <div class="captured-pieces-bottom">
+                    <CapturedPieces
+                        :captured-pieces="bottomCapturedPieces.pieces"
+                        :player-color="bottomPlayerColor"
+                        :material-advantage="bottomCapturedPieces.advantage"
+                        size="medium"
+                        layout="horizontal"
+                    />
+                </div>
                 </div>
 
                 <!-- Sidebar -->
@@ -789,9 +919,13 @@ onUnmounted(() => {
 
 <style scoped>
 .game-layout {
+    display: grid;
+    grid-template-areas:
+        "header header"
+        "main sidebar";
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr 300px;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
     background: linear-gradient(135deg, #9f9f9f 0%, #444444 100%);
 }
 
@@ -806,11 +940,54 @@ onUnmounted(() => {
 
 /* Header */
 .game-header {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    grid-area: header;
+}
+
+.game-main {
+    grid-area: main;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 1rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    min-height: 0;
+}
+
+.game-sidebar {
+    grid-area: sidebar;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    border-left: 1px solid #e2e8f0;
+    overflow-y: auto;
+    transition: all 300ms ease;
+}
+
+/* Fullscreen Mode */
+.game-layout--fullscreen {
+    grid-template-areas:
+        "main main";
+    grid-template-columns: 1fr;
+}
+
+.game-layout--fullscreen .game-header,
+.game-layout--fullscreen .game-sidebar {
+    display: none;
+}
+
+/* Collapsed Sidebar */
+.game-layout--sidebar-collapsed {
+    grid-template-columns: 1fr 50px;
+}
+
+.game-sidebar--collapsed {
+    width: 50px;
+    padding: 0.5rem;
+}
+
+.game-sidebar--collapsed > * {
+    display: none;
 }
 
 .header-content {
@@ -981,13 +1158,36 @@ onUnmounted(() => {
     max-width: 1400px;
     margin: 0 auto;
     width: 100%;
+    align-items: flex-start;
 }
 
 .board-area {
     flex-shrink: 0;
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
 }
 
+.captured-pieces-top,
+.captured-pieces-bottom {
+    width: 100%;
+    max-width: 600px; /* Begrenzt auf Board-Breite */
+}
+
+.board-container {
+    flex-shrink: 0;
+}
+.game-layout {
+    display: grid;
+    grid-template-areas:
+        "header header"
+        "main sidebar";
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr 300px;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #9f9f9f 0%, #444444 100%);
+}
 .game-sidebar {
     width: 350px;
     display: flex;
@@ -1056,6 +1256,18 @@ onUnmounted(() => {
     50% { opacity: 0.3; }
 }
 
+/* Benachrichtigungen unter Header */
+.notifications-container {
+    position: fixed;
+    top: 80px;
+    right: 1rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
 .notification-enter-active,
 .notification-leave-active {
     transition: all 300ms ease;
@@ -1091,25 +1303,19 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-    .game-main {
-        padding: 1rem;
-        gap: 1rem;
+    .game-layout {
+        grid-template-areas:
+            "header"
+            "main"
+            "sidebar";
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns: 1fr;
     }
 
-    .game-title {
-        font-size: 1.5rem;
-    }
-
-    .header-left {
-        gap: 1rem;
-    }
-
-    .sidebar-section {
-        padding: 1rem;
-    }
-
-    .game-sidebar.sidebar--collapsed {
-        display: none;
+    .game-sidebar {
+        border-left: none;
+        border-top: 1px solid #e2e8f0;
+        max-height: 200px;
     }
 }
 

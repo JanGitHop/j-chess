@@ -179,7 +179,7 @@ const calculateMaterialAdvantage = (color) => {
 }
 
 /**
- * ✅ FEN-NOTATION FÜR FIGUR BESTIMMEN
+ * FEN-NOTATION FÜR FIGUR BESTIMMEN
  */
 const getPieceFenNotation = (piece) => {
     // Falls es schon ein String ist (FEN-Notation)
@@ -193,7 +193,7 @@ const getPieceFenNotation = (piece) => {
         return piece.color === 'white' ? type.toUpperCase() : type
     }
 
-    // ✅ NEU: Falls es ein Objekt mit 'notation' Property ist
+    // NEU: Falls es ein Objekt mit 'notation' Property ist
     if (piece && piece.notation) {
         return piece.notation
     }
@@ -203,7 +203,7 @@ const getPieceFenNotation = (piece) => {
 }
 
 /**
- * ✅ SVG-URL FÜR FIGUR ABRUFEN
+ * SVG-URL FÜR FIGUR ABRUFEN
  */
 const getPieceImageUrl = (piece) => {
     const fenNotation = getPieceFenNotation(piece)
@@ -211,7 +211,7 @@ const getPieceImageUrl = (piece) => {
 }
 
 /**
- * ✅ FIGUREN-NAME FÜR TOOLTIP
+ * FIGUREN-NAME FÜR TOOLTIP
  */
 const getPieceName = (piece) => {
     const fenNotation = getPieceFenNotation(piece)
@@ -406,27 +406,6 @@ $: watchGameActive && updateTimerState()
                     +{{ timeControl.increment }}s
                 </div>
             </div>
-
-            <div v-if="showCapturedPieces && players.black.capturedPieces.length > 0" class="captured-pieces">
-                <div class="captured-pieces-title">Geschlagen:</div>
-                <div class="captured-pieces-list">
-                    <div
-                        v-for="(piece, index) in players.black.capturedPieces"
-                        :key="index"
-                        class="captured-piece"
-                        :title="getPieceName(piece)"
-                    >
-                        <img
-                            :src="getPieceImageUrl(piece)"
-                            :alt="getPieceName(piece)"
-                            class="captured-piece-image"
-                        />
-                    </div>
-                </div>
-                <div v-if="players.black.materialAdvantage > 0" class="material-advantage">
-                    +{{ players.black.materialAdvantage }}
-                </div>
-            </div>
         </div>
 
         <!-- Spielstand/Status -->
@@ -512,27 +491,6 @@ $: watchGameActive && updateTimerState()
             class="player-card player-card--white"
             :style="getPlayerStyle('white')"
         >
-            <!-- ✅ GESCHLAGENE FIGUREN MIT SVG-BILDERN -->
-            <div v-if="showCapturedPieces && players.white.capturedPieces.length > 0" class="captured-pieces">
-                <div class="captured-pieces-title">Geschlagen:</div>
-                <div class="captured-pieces-list">
-                    <div
-                        v-for="(piece, index) in players.white.capturedPieces"
-                        :key="index"
-                        class="captured-piece"
-                        :title="getPieceName(piece)"
-                    >
-                        <img
-                            :src="getPieceImageUrl(piece)"
-                            :alt="getPieceName(piece)"
-                            class="captured-piece-image"
-                        />
-                    </div>
-                </div>
-                <div v-if="players.white.materialAdvantage > 0" class="material-advantage">
-                    +{{ players.white.materialAdvantage }}
-                </div>
-            </div>
 
             <!-- Timer -->
             <div v-if="timeControl.type !== 'unlimited'" class="player-timer">
@@ -758,7 +716,7 @@ $: watchGameActive && updateTimerState()
     font-weight: 500;
 }
 
-/* ✅ STYLES FÜR GESCHLAGENE FIGUREN */
+/* STYLES FÜR GESCHLAGENE FIGUREN */
 .captured-pieces {
     border-radius: 0.5rem;
     padding: 0.75rem;
