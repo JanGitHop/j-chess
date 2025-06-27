@@ -60,12 +60,12 @@ const formattedMoveHistory = computed(() => {
             white: whiteMove ? {
                 ...whiteMove,
                 index: i,
-                notation: whiteMove.san || whiteMove.notation || whiteMove.move
+                san: whiteMove.san || whiteMove.notation || whiteMove.move
             } : null,
             black: blackMove ? {
                 ...blackMove,
                 index: i + 1,
-                notation: blackMove.san || blackMove.notation || blackMove.move
+                san: blackMove.san || blackMove.notation || blackMove.move
             } : null
         })
     }

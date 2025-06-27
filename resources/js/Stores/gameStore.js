@@ -18,6 +18,7 @@ import {
     isWhitePiece
 } from '@/Utils/chessConstants.js'
 import {cloneBoard, getPieceColor, indicesToSquare, squareToIndices} from '@/Utils/chessUtils.js'
+import { useSanGenerator } from "@/Composables/useSANGenerator.js";
 
 export const useGameStore = defineStore('game', () => {
     const chessLogic = useChessLogic()
@@ -43,6 +44,8 @@ export const useGameStore = defineStore('game', () => {
         setFen,
         resetToInitial
     } = useFenParser()
+
+    const { generateSAN, generateSimpleSAN, movesToPGN } = useSanGenerator()
 
     // Move-related state
     const selectedSquare = ref(null)
@@ -759,11 +762,32 @@ export const useGameStore = defineStore('game', () => {
             from: fromSquare,
             to: toSquare,
             piece,
-            // san: TODO: generateMoveNotation(fromSquare, toSquare, currentBoard.value, ),
+            capturedPiece: targetPiece,
+            promotion: null,
+            isCheck: false,
+            isCheckmate: false,
+            moveType: targetMove.type,
+            san: generateSAN(
+                {
+                    from: fromSquare,
+                    to: toSquare,
+                    piece,
+                    capturedPiece: targetPiece,
+                    promotion: null,
+                    isCheck: false,
+                    isCheckmate: false,
+                    moveType: targetMove.type
+                },
+                currentBoard.value,
+                chessLogic.getAllLegalMoves(
+                    currentBoard.value,
+                    currentPlayer.value,
+                    gameState.value
+                )
+            ),
             fenBefore: currentFen.value,
             fenAfter: newFen,
             timestamp: new Date(),
-            moveType: targetMove.type,
             capturedPieces
         }
 
@@ -801,12 +825,13 @@ export const useGameStore = defineStore('game', () => {
 
             const targetPiece = currentBoard.value[toIndices.rankIndex][toIndices.fileIndex]
             const gameState = getCurrentGameState()
+            const isCapture = !isEmpty(targetPiece)
 
             // Board kopieren
             const tempBoard = cloneBoard(currentBoard.value)
 
             // Geschlagene Figur behandeln
-            if (!isEmpty(targetPiece)) {
+            if (isCapture) {
                 addCapturedPiece(targetPiece)
                 console.log('🎯 Promotion mit Eroberung:', targetPiece, 'geschlagen')
             }
@@ -859,7 +884,24 @@ export const useGameStore = defineStore('game', () => {
                 to: toSquare,
                 piece,
                 promotionPiece,
-                // san: TODO: generateMoveNotation mit Promotion
+                san: generateSAN(
+                    {
+                        from: fromSquare,
+                        to: toSquare,
+                        piece: piece,
+                        capturedPiece: targetPiece,
+                        promotion: promotionPiece,
+                        isCheck: false,
+                        isCheckmate: false,
+                        moveType: 'promotion'
+                    },
+                    currentBoard.value,
+                    chessLogic.getAllLegalMoves(
+                        currentBoard.value,
+                        currentPlayer.value,
+                        gameState.value
+                    )
+                ),
                 fenBefore: currentFen.value,
                 fenAfter: newFen,
                 timestamp: new Date(),

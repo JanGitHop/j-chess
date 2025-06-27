@@ -876,71 +876,6 @@ export function useChessLogic() {
     }
 
     /**
-     * Generiert Standard Algebraic Notation (SAN) für einen Zug
-     * @param {string} from - Ausgangsfeld (z.B. "e2")
-     * @param {string} to - Zielfeld (z.B. "e4")
-     * @param {Array} board - Aktuelles Brett
-     * @param {object} moveInfo - Zusätzliche Zug-Informationen
-     * @returns {string} SAN-Notation
-     */
-    const generateMoveNotation = (from, to, board, moveInfo = {}) => {
-        const fromIndices = squareToIndices(from)
-        const toIndices = squareToIndices(to)
-
-        if (!fromIndices || !toIndices) return '??'
-
-        const piece = board[fromIndices.rankIndex][fromIndices.fileIndex]
-        if (isEmpty(piece)) return '??'
-
-        const pieceType = piece.toLowerCase()
-        const targetPiece = board[toIndices.rankIndex][toIndices.fileIndex]
-        const isCapture = !isEmpty(targetPiece) || moveInfo.type === 'enpassant'
-
-        let notation = ''
-
-        // 1. Spezielle Züge
-        if (moveInfo.type === 'castle') {
-            return moveInfo.castleType === 'kingside' ? 'O-O' : 'O-O-O'
-        }
-
-        // 2. Figurenbuchstabe (außer Bauern)
-        if (pieceType !== 'p') {
-            notation += piece.toUpperCase()
-
-            // Mehrdeutigkeit auflösen (falls mehrere gleiche Figuren dasselbe Feld erreichen können)
-            const disambiguation = getDisambiguation(piece, from, to, board)
-            notation += disambiguation
-        }
-
-        // 3. Schlag-Notation
-        if (isCapture) {
-            // Bei Bauern: Ausgangslinie bei Schlag
-            if (pieceType === 'p') {
-                notation += from[0] // File (a-h)
-            }
-            notation += 'x'
-        }
-
-        // 4. Zielfeld
-        notation += to
-
-        // 5. Bauernumwandlung
-        if (moveInfo.promotion) {
-            notation += '=' + (moveInfo.promotionPiece || 'Q').toUpperCase()
-        }
-
-        // 6. En-Passant Kennzeichnung (optional)
-        if (moveInfo.type === 'enpassant') {
-            notation += ' e.p.'
-        }
-
-        // 7. Schach/Matt wird später hinzugefügt nach Zug-Ausführung
-        // Das kann nur nach dem Zug bestimmt werden
-
-        return notation
-    }
-
-    /**
      * Mehrdeutigkeit bei gleichen Figuren auflösen
      * @param {string} piece
      * @param {string} from
@@ -952,7 +887,6 @@ export function useChessLogic() {
         const pieceType = piece.toLowerCase()
         const pieceColor = getPieceColor(piece)
 
-        // Alle Figuren der gleichen Art und Farbe finden
         const samePieces = []
         for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
             for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
@@ -975,10 +909,7 @@ export function useChessLogic() {
 
         if (samePieces.length === 0) return ''
 
-        // Prüfen welche dieser Figuren auch zum Zielfeld ziehen könnten
         const conflictingPieces = samePieces.filter(pieceData => {
-            // Vereinfachte Prüfung - in einer vollständigen Implementierung
-            // würde hier generatePossibleMoves verwendet
             return couldPieceReachSquare(piece, pieceData.square, to, board)
         })
 
@@ -999,7 +930,6 @@ export function useChessLogic() {
             return from[1] // Rank (1-8)
         }
 
-        // Beide nötig
         return from
     }
 
@@ -1012,7 +942,6 @@ export function useChessLogic() {
      * @returns {boolean}
      */
     const couldPieceReachSquare = (piece, from, to, board) => {
-        // Vereinfachte Implementierung - würde in Realität generatePossibleMoves verwenden
         const pieceType = piece.toLowerCase()
 
         switch (pieceType) {
