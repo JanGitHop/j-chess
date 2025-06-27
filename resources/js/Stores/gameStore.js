@@ -162,28 +162,27 @@ export const useGameStore = defineStore('game', () => {
      * Spiel initialisieren
      * @param {object} options - Spieloptionen
      */
-    const initializeGame = (options = {}) => {
+    const initializeGame = async (options = {}) => {
         try {
-            // Game Mode setzen
             if (options.mode) {
                 setGameMode(options.mode)
             }
 
-            // Spiel starten
-            startNewGame({
+            await startNewGame({
                 gameId: options.gameId || `game_${Date.now()}`,
                 whitePlayer: options.whitePlayer || 'Weiß',
                 blackPlayer: options.blackPlayer || 'Schwarz'
             })
 
-            // Custom Position laden falls vorhanden
             if (options.initialPosition) {
                 loadGameFromFen(options.initialPosition)
             }
 
             console.log('Spiel initialisiert:', options)
+            return Promise.resolve() // Expliziter Return
         } catch (error) {
             console.error('Fehler beim Initialisieren des Spiels:', error)
+            return Promise.reject(error) // Expliziter Error-Return
         }
     }
 
@@ -191,7 +190,7 @@ export const useGameStore = defineStore('game', () => {
      * Neues Spiel starten
      * @param {object} options - Spieloptionen
      */
-    const startNewGame = (options = {}) => {
+    const startNewGame = async (options = {}) => {
         try {
             // State zurücksetzen
             gameId.value = options.gameId || `game_${Date.now()}`
@@ -213,7 +212,12 @@ export const useGameStore = defineStore('game', () => {
             isInCheck.value = false
             checkingPieces.value = []
             capturedPieces.value = { white: [], black: [] }
-
+            if (typeof window !== 'undefined') {
+                // Nur im Browser ausführen, nicht auf Server-Seite
+                const { useGameConfigStore } = await import('@/Stores/gameConfigStore.js')
+                const gameConfigStore = useGameConfigStore()
+                gameConfigStore.setBoardOrientation('white')
+            }
             console.log('Neues Spiel gestartet:', gameId.value)
         } catch (error) {
             console.error('Fehler beim Starten des Spiels:', error)

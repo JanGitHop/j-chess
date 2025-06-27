@@ -707,7 +707,7 @@ watch(() => gameStore.halfmoveClock, (newHalfmoves, oldHalfmoves) => {
 
 onMounted(async () => {
     // Spiel initialisieren
-    gameStore.initializeGame({
+    await gameStore.initializeGame({
         mode: props.gameMode,
         playerColor: props.playerColor,
         timeControl: props.timeControl,
