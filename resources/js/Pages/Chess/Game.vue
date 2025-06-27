@@ -8,6 +8,7 @@ import GameControls from '@/Components/GameControls.vue'
 import PlayerInfo from '@/Components/PlayerInfo.vue'
 import CapturedPieces from '@/Components/CapturedPieces.vue'
 import PromotionModal from '@/Components/PromotionModal.vue'
+import BoardInfo from "@/Components/BoardInfo.vue";
 import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
@@ -867,35 +868,11 @@ onUnmounted(() => {
                     />
 
                     <!-- Board Settings Compact -->
-                    <div class="sidebar-section">
-                        <h3 class="section-title">Board-Info</h3>
-                        <div class="board-info">
-                            <div class="info-item">
-                                <span class="info-label">Theme:</span>
-                                <span class="info-value">{{ boardStore.currentTheme.name }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Größe:</span>
-                                <span class="info-value">{{ boardStore.currentBoardSize.name }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Koordinaten:</span>
-                                <span class="info-value">{{ boardStore.settings.showCoordinates ? 'An' : 'Aus' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">FEN:</span>
-                                <div class="info-value fen-display">
-                                    <div
-                                        v-for="(segment, index) in gameStore.currentFEN.split('/')"
-                                        :key="index"
-                                        class="fen-segment"
-                                    >
-                                        {{ segment }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <BoardInfo
+                        class="sidebar-section"
+                        :show-title="true"
+                        :show-fen="true"
+                    />
                 </aside>
             </main>
         </div>
@@ -1221,12 +1198,6 @@ onUnmounted(() => {
     font-weight: 600;
     color: #2d3748;
     margin: 0 0 1rem 0;
-}
-
-.board-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
 }
 
 .info-item {
