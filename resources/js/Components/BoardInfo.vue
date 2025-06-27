@@ -23,22 +23,18 @@ const props = defineProps({
 
 // ===== COMPUTED PROPERTIES =====
 
-/**
- * Board-Informationen aus Store zusammenstellen
- */
 const boardInfo = computed(() => ({
     currentFen: gameStore.currentFEN || 'Lädt...'
 }))
 
 /**
- * FEN in Segmente aufteilen für vollständige Darstellung aller FEN-Informationen
+ * FEN in Segmente aufteilen
  */
 const fenSegments = computed(() => {
     if (!boardInfo.value.currentFen || boardInfo.value.currentFen === 'Lädt...') {
         return [{ type: 'loading', value: 'Lädt...', label: 'Status' }]
     }
 
-    // FEN in alle 6 Teile aufteilen
     const fenParts = boardInfo.value.currentFen.split(' ')
 
     if (fenParts.length !== 6) {
@@ -47,7 +43,7 @@ const fenSegments = computed(() => {
 
     const [position, activeColor, castling, enPassant, halfmove, fullmove] = fenParts
 
-    // Brett-Position in Reihen aufteilen (8. Reihe bis 1. Reihe)
+    // Brett-Position in Reihen aufteilen
     const boardRanks = position.split('/')
     const positionValue = boardRanks.map((rank, index) => {
         const rankNumber = 8 - index // 8. Reihe ist Index 0
