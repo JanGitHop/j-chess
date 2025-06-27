@@ -349,7 +349,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     /**
-     * ✅ NEU: 3-fache Stellungswiederholung prüfen
+     * 3-fache Stellungswiederholung prüfen
      * @returns {boolean} - True wenn Remis durch Wiederholung
      */
     const checkForThreefoldRepetition = () => {
@@ -370,7 +370,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     /**
-     * ✅ NEU: Warnung für nahende Stellungswiederholung
+     * Warnung für nahende Stellungswiederholung
      * @returns {object|null} - Warninginformationen
      */
     const shouldWarnThreefoldRepetition = () => {
@@ -383,7 +383,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     /**
-     * ✅ NEU: Anzahl Wiederholungen der aktuellen Position
+     * Anzahl Wiederholungen der aktuellen Position
      * @returns {number}
      */
     const getCurrentPositionRepetitionCount = () => {
@@ -404,21 +404,25 @@ export const useGameStore = defineStore('game', () => {
 
         const gameState = getCurrentGameState()
 
-        const isUnderAttack = chessLogic.isInCheck(currentBoard.value, currentPlayer.value === 'white' ? 'black' : 'white', gameState)
+        const isUnderAttack = chessLogic.isInCheck(
+            currentBoard.value,
+            currentPlayer.value,
+            gameState
+        )
 
-        if (isUnderAttack !== isInCheck.value) {
-            isInCheck.value = isUnderAttack
+        isInCheck.value = isUnderAttack
 
-            if (isUnderAttack) {
-                checkingPieces.value = chessLogic.getAttackingPieces(
-                    kingSquare,
-                    currentPlayer.value === 'white' ? 'black' : 'white',
-                    currentBoard.value,
-                    gameState.value
-                )
-                gameStatus.value = GAME_STATUS.CHECK
-            } else {
-                checkingPieces.value = []
+        if (isUnderAttack) {
+            checkingPieces.value = chessLogic.getAttackingPieces(
+                kingSquare,
+                currentPlayer.value === 'white' ? 'black' : 'white',
+                currentBoard.value,
+                gameState
+            )
+            gameStatus.value = GAME_STATUS.CHECK
+        } else {
+            checkingPieces.value = []
+            if (gameStatus.value === GAME_STATUS.CHECK) {
                 gameStatus.value = GAME_STATUS.ACTIVE
             }
         }
@@ -448,7 +452,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     const checkForStalemate = () => {
-        if (isInCheck.value) {
+        if (checkForCheck()) {
             return false
         }
 

@@ -239,11 +239,13 @@ const performAutoReverse = () => {
     setTimeout(() => {
         const newOrientation = configStore.flipBoard()
 
-        addNotification({
-            type: 'info',
-            message: `🔄 Brett automatisch gedreht - ${newOrientation === 'white' ? 'Weiß' : 'Schwarz'} unten`,
-            duration: 1500
-        })
+    /*
+    addNotification({
+        type: 'info',
+        message: `🔄 Brett automatisch gedreht - ${newOrientation === 'white' ? 'Weiß' : 'Schwarz'} unten`,
+        duration: 1500
+    })
+    */
     }, 300)
 }
 

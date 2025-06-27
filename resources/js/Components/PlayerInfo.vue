@@ -345,31 +345,24 @@ $: watchGameActive && updateTimerState()
 </script>
 
 <template>
-    <div class="player-info">
-        <h3 class="section-title">Spieler</h3>
-
-        <!-- Schwarz (oben, gespiegelt zur Board-Orientierung) -->
-        <div
-            class="player-card player-card--black"
-            :style="getPlayerStyle('black')"
-        >
+    <div class="modern-player-info">
+        <!-- Schwarz (oben) -->
+        <div class="player-card player-card--black" :class="{
+            'player-card--active': players.black.isActive && gameState.isGameActive,
+            'player-card--check': gameState.isInCheck && players.black.isActive
+        }">
+            <!-- Player Header -->
             <div class="player-header">
-                <div class="player-avatar">
-                    <img
-                        v-if="players.black.avatar"
-                        :src="players.black.avatar"
-                        :alt="players.black.name"
-                        class="avatar-image"
-                    />
-                    <div v-else class="avatar-placeholder avatar-placeholder--black">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                <div class="player-avatar player-avatar--black">
+                    <img v-if="players.black.avatar" :src="players.black.avatar" :alt="players.black.name" />
+                    <div v-else class="avatar-fallback">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7V9C15 10.66 13.66 12 12 12S9 10.66 9 9V7L3 7V9C3 11.76 5.24 14 8 14V16C8 17.1 8.9 18 10 18H14C15.1 18 16 17.1 16 16V14C18.76 14 21 11.76 21 9Z"/>
                         </svg>
                     </div>
                 </div>
 
-                <div class="player-info-text">
+                <div class="player-details">
                     <div class="player-name">{{ players.black.name }}</div>
                     <div v-if="showPlayerRatings && players.black.rating" class="player-rating">
                         {{ players.black.rating }}
@@ -377,151 +370,114 @@ $: watchGameActive && updateTimerState()
                 </div>
 
                 <div class="player-status">
-                    <div
-                        v-if="players.black.isActive && gameState.isGameActive"
-                        class="turn-indicator turn-indicator--active"
-                        title="Am Zug"
-                    >
-                        <div class="turn-dot"></div>
+                    <div v-if="players.black.isActive && gameState.isGameActive" class="turn-indicator">
+                        <div class="turn-pulse"></div>
                     </div>
-                    <div
-                        v-if="gameState.isInCheck && players.black.isActive"
-                        class="check-indicator"
-                        title="Schach!"
-                    >
-                        ⚠️
+                    <div v-if="gameState.isInCheck && players.black.isActive" class="check-warning">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M1 21L12 2L23 21H1ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z"/>
+                        </svg>
                     </div>
                 </div>
             </div>
 
-            <!-- Timer -->
-            <div v-if="timeControl.type !== 'unlimited'" class="player-timer">
-                <div
-                    class="time-display"
-                    :style="getTimeStyle(players.black.time)"
-                >
+            <!-- Timer (falls aktiv) -->
+            <div v-if="timeControl.type !== 'unlimited'" class="timer-section">
+                <div class="time-display" :style="getTimeStyle(players.black.time)">
                     {{ formatTime(players.black.time) }}
                 </div>
-                <div v-if="timeControl.increment" class="increment-info">
+                <div v-if="timeControl.increment" class="increment-badge">
                     +{{ timeControl.increment }}s
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Game Status Center -->
+        <div class="status-center">
+            <div class="game-meta">
+                <div class="move-counter">
+                    <span class="move-label">Zug</span>
+                    <span class="move-number">{{ Math.ceil(gameState.moveCount / 2) || 1 }}</span>
+                </div>
+
+                <div class="game-status" :class="{
+                    'status-active': gameState.isGameActive,
+                    'status-check': gameState.isInCheck,
+                    'status-finished': !gameState.isGameActive
+                }">
+                    <div class="status-indicator"></div>
+                    <span class="status-text">
+                        <template v-if="gameState.isGameActive">
+                            {{ gameState.isInCheck ? 'Schach' : 'Aktiv' }}
+                        </template>
+                        <template v-else-if="gameState.status === 'CHECKMATE'">
+                            Schachmatt
+                        </template>
+                        <template v-else-if="gameState.status === 'STALEMATE'">
+                            Patt
+                        </template>
+                        <template v-else-if="isDrawStatus(gameState.status)">
+                            Remis
+                        </template>
+                        <template v-else>
+                            Beendet
+                        </template>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Special Warnings -->
+            <div v-if="threefoldInfo.shouldShow || fiftyMoveInfo.shouldWarn" class="warnings-section">
+                <div v-if="threefoldInfo.shouldShow" class="warning-item warning-repetition" :class="{
+                    'warning-critical': threefoldInfo.isCritical,
+                    'warning-near': threefoldInfo.isWarning
+                }">
+                    <svg class="warning-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12,6V9L16,5L12,1V4A8,8 0 0,0 4,12C4,13.57 4.46,15.03 5.24,16.26L6.7,14.8C6.25,13.97 6,13 6,12A6,6 0 0,1 12,6M18.76,7.74L17.3,9.2C17.74,10.04 18,11 18,12A6,6 0 0,1 12,18V15L8,19L12,23V20A8,8 0 0,0 20,12C20,10.43 19.54,8.97 18.76,7.74Z"/>
+                    </svg>
+                    <span>{{ threefoldInfo.currentCount }}/3</span>
+                </div>
+
+                <div v-if="fiftyMoveInfo.shouldWarn" class="warning-item warning-fifty" :class="{
+                    'warning-critical': fiftyMoveInfo.isCritical,
+                    'warning-near': fiftyMoveInfo.isNear
+                }">
+                    <svg class="warning-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/>
+                    </svg>
+                    <span>{{ fiftyMoveInfo.movesUntil50 }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Spielstand/Status -->
-        <div class="game-status-info">
-            <div class="status-item">
-                <span class="status-label">Zug:</span>
-                <span class="status-value">{{ Math.ceil(gameState.moveCount / 2) || 1 }}</span>
-            </div>
-
-            <!-- 3-fache Stellungswiederholung -->
-            <div v-if="threefoldInfo.shouldShow" class="status-item status-item--repetition">
-            <span class="status-label">
-                <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
-                </svg>
-                Wiederholung:
-            </span>
-                <span
-                    class="status-value"
-                    :class="{
-                    'text-yellow-600 font-semibold': threefoldInfo.isWarning,
-                    'text-red-600 font-bold animate-pulse': threefoldInfo.isCritical,
-                    'text-orange-500': threefoldInfo.currentCount === 1
-                }"
-                    :title="`Stellungswiederholung: ${threefoldInfo.currentCount}/3 - ${threefoldInfo.repetitionsLeft} bis Remis`"
-                >
-                {{ threefoldInfo.currentCount }}/3
-                <span v-if="threefoldInfo.isCritical" class="ml-1 text-xs">⚠️</span>
-            </span>
-            </div>
-
-            <!-- 50-Züge-Regel -->
-            <div v-if="fiftyMoveInfo.shouldWarn" class="status-item status-item--fifty-move">
-                <span class="status-label">Züge bis Remis:</span>
-                <span
-                    class="status-value"
-                    :class="{
-                        'text-yellow-600': fiftyMoveInfo.isNear && !fiftyMoveInfo.isCritical,
-                        'text-red-600': fiftyMoveInfo.isCritical,
-                        'text-orange-500': !fiftyMoveInfo.isNear
-                    }"
-                    :title="`50-Züge-Regel: ${fiftyMoveInfo.halfmoves}/100 Halbzüge`"
-                >
-                    {{ fiftyMoveInfo.movesUntil50 }}
-                </span>
-            </div>
-
-            <div class="status-item">
-                <span class="status-label">Status:</span>
-                <span class="status-value" :class="{
-                'text-green-600': gameState.isGameActive,
-                'text-red-600': !gameState.isGameActive && gameState.status === 'CHECKMATE',
-                'text-yellow-600': !gameState.isGameActive && gameState.status === 'STALEMATE',
-                'text-blue-600': !gameState.isGameActive && isDrawStatus(gameState.status)
-            }">
-                <template v-if="gameState.isGameActive">
-                    {{ gameState.isInCheck ? 'Schach' : 'Aktiv' }}
-                </template>
-                <template v-else-if="gameState.status === 'CHECKMATE'">
-                    Schachmatt
-                </template>
-                <template v-else-if="gameState.status === 'STALEMATE'">
-                    Patt
-                </template>
-                <template v-else-if="gameState.status === 'DRAW_FIFTY_MOVE'">
-                    Remis (50-Züge)
-                </template>
-                <template v-else-if="gameState.status === 'DRAW_REPETITION'">
-                    Remis (Wiederholung)
-                </template>
-                <template v-else-if="isDrawStatus(gameState.status)">
-                    Remis
-                </template>
-                <template v-else>
-                    Beendet
-                </template>
-            </span>
-            </div>
-        </div>
-
-        <!-- Weiß (unten, normale Orientierung) -->
-        <div
-            class="player-card player-card--white"
-            :style="getPlayerStyle('white')"
-        >
-
-            <!-- Timer -->
-            <div v-if="timeControl.type !== 'unlimited'" class="player-timer">
-                <div
-                    class="time-display"
-                    :style="getTimeStyle(players.white.time)"
-                >
+        <!-- Weiß (unten) -->
+        <div class="player-card player-card--white" :class="{
+            'player-card--active': players.white.isActive && gameState.isGameActive,
+            'player-card--check': gameState.isInCheck && players.white.isActive
+        }">
+            <!-- Timer (falls aktiv) -->
+            <div v-if="timeControl.type !== 'unlimited'" class="timer-section">
+                <div class="time-display" :style="getTimeStyle(players.white.time)">
                     {{ formatTime(players.white.time) }}
                 </div>
-                <div v-if="timeControl.increment" class="increment-info">
+                <div v-if="timeControl.increment" class="increment-badge">
                     +{{ timeControl.increment }}s
                 </div>
             </div>
 
+            <!-- Player Header -->
             <div class="player-header">
-                <div class="player-avatar">
-                    <img
-                        v-if="players.white.avatar"
-                        :src="players.white.avatar"
-                        :alt="players.white.name"
-                        class="avatar-image"
-                    />
-                    <div v-else class="avatar-placeholder avatar-placeholder--white">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                <div class="player-avatar player-avatar--white">
+                    <img v-if="players.white.avatar" :src="players.white.avatar" :alt="players.white.name" />
+                    <div v-else class="avatar-fallback">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7V9C15 10.66 13.66 12 12 12S9 10.66 9 9V7L3 7V9C3 11.76 5.24 14 8 14V16C8 17.1 8.9 18 10 18H14C15.1 18 16 17.1 16 16V14C18.76 14 21 11.76 21 9Z"/>
                         </svg>
                     </div>
                 </div>
 
-                <div class="player-info-text">
+                <div class="player-details">
                     <div class="player-name">{{ players.white.name }}</div>
                     <div v-if="showPlayerRatings && players.white.rating" class="player-rating">
                         {{ players.white.rating }}
@@ -529,19 +485,13 @@ $: watchGameActive && updateTimerState()
                 </div>
 
                 <div class="player-status">
-                    <div
-                        v-if="players.white.isActive && gameState.isGameActive"
-                        class="turn-indicator turn-indicator--active"
-                        title="Am Zug"
-                    >
-                        <div class="turn-dot"></div>
+                    <div v-if="players.white.isActive && gameState.isGameActive" class="turn-indicator">
+                        <div class="turn-pulse"></div>
                     </div>
-                    <div
-                        v-if="gameState.isInCheck && players.white.isActive"
-                        class="check-indicator"
-                        title="Schach!"
-                    >
-                        ⚠️
+                    <div v-if="gameState.isInCheck && players.white.isActive" class="check-warning">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M1 21L12 2L23 21H1ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z"/>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -550,114 +500,125 @@ $: watchGameActive && updateTimerState()
 </template>
 
 <style scoped>
-.player-info {
+.modern-player-info {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
+    max-width: 400px;
+    width: 100%;
 }
 
-.section-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0 0 1rem 0;
-}
-
+/* Player Cards */
 .player-card {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid transparent;
+    border-radius: 16px;
     padding: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 300ms ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.player-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%);
+    transition: all 0.3s ease;
+}
+
+.player-card--active {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(59, 130, 246, 0.08);
+}
+
+.player-card--active::before {
+    background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 50%, #3b82f6 100%);
+}
+
+.player-card--check {
+    border-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2), 0 2px 4px rgba(239, 68, 68, 0.1);
+    animation: check-pulse 1.5s ease-in-out infinite;
+}
+
+.player-card--check::before {
+    background: linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #ef4444 100%);
 }
 
 .player-card--black {
-    order: 1; /* Schwarz oben */
+    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    color: #f9fafb;
 }
 
 .player-card--white {
-    order: 3; /* Weiß unten */
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    color: #1f2937;
 }
 
-.game-status-info {
-    order: 2; /* Status in der Mitte */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    font-size: 0.875rem;
-}
-
-.status-item {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.status-label {
-    color: #718096;
-    font-weight: 500;
-}
-
-.status-value {
-    color: #2d3748;
-    font-weight: 600;
-}
-
+/* Player Header */
 .player-header {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 0.75rem;
 }
 
 .player-avatar {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     overflow: hidden;
+    position: relative;
     flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.avatar-image {
+.player-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.avatar-placeholder {
+.avatar-fallback {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: linear-gradient(135deg, #6b7280, #4b5563);
     color: white;
 }
 
-.avatar-placeholder--white {
-    background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
-    color: #4a5568;
+.player-avatar--white .avatar-fallback {
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    color: #374151;
 }
 
-.avatar-placeholder--black {
-    background: linear-gradient(135deg, #4a5568, #2d3748);
-    color: #e2e8f0;
+.avatar-fallback svg {
+    width: 24px;
+    height: 24px;
 }
 
-.player-info-text {
+.player-details {
     flex: 1;
+    min-width: 0;
 }
 
 .player-name {
-    font-weight: 600;
-    color: #2d3748;
     font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+    color: inherit;
 }
 
 .player-rating {
     font-size: 0.875rem;
-    color: #718096;
+    opacity: 0.7;
     font-weight: 500;
 }
 
@@ -668,192 +629,282 @@ $: watchGameActive && updateTimerState()
 }
 
 .turn-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.turn-indicator--active {
-    background: #48bb78;
-    animation: turn-pulse 2s ease-in-out infinite;
-}
-
-.turn-dot {
-    width: 6px;
-    height: 6px;
-    background: white;
+.turn-pulse {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
     border-radius: 50%;
+    animation: turn-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
 }
 
-.check-indicator {
-    font-size: 1.25rem;
-    animation: check-shake 0.5s ease-in-out infinite;
+.check-warning {
+    width: 20px;
+    height: 20px;
+    color: #ef4444;
+    animation: check-shake 0.6s ease-in-out infinite;
 }
 
-.player-timer {
+.check-warning svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Timer Section */
+.timer-section {
     display: flex;
     align-items: center;
     justify-content: space-between;
     background: rgba(0, 0, 0, 0.05);
-    border-radius: 0.5rem;
+    border-radius: 8px;
     padding: 0.5rem 0.75rem;
-    margin-bottom: 0.75rem;
+    margin: 0.75rem 0;
+}
+
+.player-card--black .timer-section {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .time-display {
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 1.25rem;
-    font-weight: bold;
-    transition: all 300ms ease;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
 }
 
-.increment-info {
+.increment-badge {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
     font-size: 0.75rem;
-    color: #718096;
     font-weight: 500;
 }
 
-/* STYLES FÜR GESCHLAGENE FIGUREN */
+.player-card--black .increment-badge {
+    background: rgba(255, 255, 255, 0.15);
+    color: #f9fafb;
+}
+
+/* Captured Pieces */
+.captured-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+}
+
 .captured-pieces {
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-/* Spezifische Hintergründe für Weiß und Schwarz */
-.player-card--white .captured-pieces {
-    background: rgba(248, 248, 248, 0.95); /* Helles Grau für weißen Spieler */
-}
-
-.player-card--black .captured-pieces {
-    background: rgba(60, 60, 60, 0.95); /* Dunkles Anthrazit für schwarzen Spieler */
-}
-
-.captured-pieces-title {
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-}
-
-/* Titel-Farbe je nach Spieler anpassen */
-.player-card--white .captured-pieces-title {
-    color: #4a5568; /* Dunkler Text auf hellem Hintergrund */
-}
-
-.player-card--black .captured-pieces-title {
-    color: #e2e8f0; /* Heller Text auf dunklem Hintergrund */
-}
-
-.captured-pieces-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0;
-    margin-bottom: 0.5rem;
-    /* Negative Margin um eventuelle versteckte Abstände zu eliminieren */
-    margin-left: -2px;
-    margin-top: -1px;
+    gap: 0.125rem;
+    flex: 1;
 }
 
 .captured-piece {
-    width: 30px;  /* Leicht kleiner für kompaktere Darstellung */
-    height: 30px;
-    /* Negative Margins für Überlappung - die Figuren rücken näher zusammen */
-    margin-right: -2px;
-    margin-bottom: -1px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 0;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
     cursor: default;
-    transition: all 200ms ease;
-    box-sizing: border-box;
-    /* Z-Index für saubere Überlappung */
-    position: relative;
-    z-index: 1;
 }
 
-/* Hover bekommt höheren z-index */
 .captured-piece:hover {
-    transform: scale(1.2);
+    transform: scale(1.15);
     z-index: 10;
+    position: relative;
 }
 
-.captured-piece-image {
-    width: 26px;  /* Angepasst an den kleineren Container */
-    height: 26px;
+.captured-piece img {
+    width: 24px;
+    height: 24px;
     object-fit: contain;
-    /*image-rendering: -webkit-optimize-contrast;*/
-    image-rendering: crisp-edges;
-}
-
-/* Spezifische Hover-Effekte nur für sehr subtile Hintergründe */
-.player-card--white .captured-piece:hover {
-    background: rgba(255, 255, 255, 0.3); /* Sehr transparent */
-    border-radius: 0.25rem; /* Nur bei Hover sichtbar */
-}
-
-.player-card--black .captured-piece:hover {
-    background: rgba(80, 80, 80, 0.3); /* Sehr transparent */
-    border-radius: 0.25rem; /* Nur bei Hover sichtbar */
-}
-
-.captured-piece-image {
-    width: 28px;  /* Größer: von 18px auf 28px - fast die ganze Container-Größe */
-    height: 28px; /* Größer: von 18px auf 28px */
-    object-fit: contain;
-    /* Bessere Darstellung der SVGs */
-    /*image-rendering: -webkit-optimize-contrast;*/
-    image-rendering: crisp-edges;
-}
-
-/* Optional: Leichte Aufhellung der SVGs auf dunklem Hintergrund */
-.player-card--black .captured-piece-image {
-    filter: brightness(1.1) contrast(1.1);
 }
 
 .material-advantage {
-    font-size: 0.875rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #48bb78;
-    text-align: right;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
 }
 
-/* Material-Advantage Text auf dunklem Hintergrund anpassen */
-.player-card--black .material-advantage {
-    color: #68d391; /* Helleres Grün für bessere Lesbarkeit */
+/* Status Center */
+.status-center {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border: 1px solid rgba(226, 232, 240, 0.5);
 }
 
-.status-item--fifty-move {
-    animation: fifty-move-warning 2s ease-in-out infinite;
-}
-
-.status-item--fifty-move .status-label {
-    font-weight: 600;
-}
-
-.status-item--repetition {
-    transition: all 300ms ease;
-}
-
-.status-item--repetition .status-label {
-    font-weight: 500;
+.game-meta {
     display: flex;
     align-items: center;
+    justify-content: space-between;
 }
 
-.status-item--repetition:hover {
-    background-color: rgba(59, 130, 246, 0.05);
-    border-radius: 4px;
-    padding: 2px 4px;
+.move-counter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
-/* Animationen */
 
-@keyframes fifty-move-warning {
+.move-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.move-number {
+    background: #3b82f6;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    min-width: 2rem;
+    text-align: center;
+}
+
+.game-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #94a3b8;
+    transition: all 0.3s ease;
+}
+
+.status-active .status-indicator {
+    background: #10b981;
+    animation: status-pulse 2s ease-in-out infinite;
+}
+
+.status-check .status-indicator {
+    background: #ef4444;
+    animation: check-pulse 1s ease-in-out infinite;
+}
+
+.status-finished .status-indicator {
+    background: #6b7280;
+}
+
+.status-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* Warnings Section */
+.warnings-section {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.warning-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.warning-repetition {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.warning-fifty {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.warning-near {
+    background: rgba(245, 158, 11, 0.2);
+    animation: warning-pulse 2s ease-in-out infinite;
+}
+
+.warning-critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.3);
+    animation: critical-pulse 1s ease-in-out infinite;
+}
+
+.warning-icon {
+    width: 12px;
+    height: 12px;
+}
+
+/* Animations */
+@keyframes turn-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+}
+
+@keyframes check-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+@keyframes check-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-1px); }
+    75% { transform: translateX(1px); }
+}
+
+@keyframes status-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.2);
+    }
+}
+
+@keyframes warning-pulse {
     0%, 100% {
         opacity: 1;
         transform: scale(1);
@@ -864,58 +915,29 @@ $: watchGameActive && updateTimerState()
     }
 }
 
-@keyframes repetition-pulse {
+@keyframes critical-pulse {
     0%, 100% {
         opacity: 1;
         transform: scale(1);
+        background: rgba(239, 68, 68, 0.15);
     }
     50% {
-        opacity: 0.7;
+        opacity: 0.9;
         transform: scale(1.05);
+        background: rgba(239, 68, 68, 0.25);
     }
 }
 
-.status-item--repetition .animate-pulse {
-    animation: repetition-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes turn-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-@keyframes check-pulse {
-    0%, 100% {
-        border-color: #e53e3e;
-        background-color: rgba(229, 62, 62, 0.1);
-    }
-    50% {
-        border-color: #fc8181;
-        background-color: rgba(229, 62, 62, 0.2);
-    }
-}
-
-@keyframes check-shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-2px); }
-    75% { transform: translateX(2px); }
-}
-
-@keyframes time-critical {
-    0%, 100% {
-        color: #e53e3e;
-        transform: scale(1);
-    }
-    50% {
-        color: #fc8181;
-        transform: scale(1.05);
-    }
-}
-
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
+    .modern-player-info {
+        max-width: none;
+        gap: 0.5rem;
+    }
+
     .player-card {
         padding: 0.75rem;
+        border-radius: 12px;
     }
 
     .player-header {
@@ -923,8 +945,8 @@ $: watchGameActive && updateTimerState()
     }
 
     .player-avatar {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
     }
 
     .player-name {
@@ -936,37 +958,34 @@ $: watchGameActive && updateTimerState()
     }
 
     .captured-piece {
+        width: 24px;
+        height: 24px;
+    }
+
+    .captured-piece img {
         width: 20px;
         height: 20px;
     }
 
-    .captured-piece-image {
-        width: 16px;
-        height: 16px;
+    .status-center {
+        padding: 0.75rem;
+        border-radius: 8px;
     }
 
-    .game-status-info {
+    .warnings-section {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-meta {
         flex-direction: column;
         gap: 0.5rem;
         align-items: stretch;
     }
 
-    .status-item--fifty-move .status-label {
-        font-size: 0.75rem;
-    }
-}
-
-/* Print Styles */
-@media print {
-    .player-timer,
-    .turn-indicator,
-    .check-indicator {
-        display: none;
-    }
-
-    .player-card {
-        box-shadow: none;
-        border: 1px solid #e2e8f0;
+    .move-counter, .game-status {
+        justify-content: center;
     }
 }
 </style>

@@ -155,19 +155,6 @@ const copyPGN = () => {
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 p-3 rounded-lg" :class="{
-                'bg-green-50 text-green-800': gameStore.isGameActive,
-                'bg-gray-50 text-gray-800': !gameStore.isGameActive,
-                'bg-red-50 text-red-800': gameStore.isInCheck
-            }">
-                <div class="w-2 h-2 rounded-full" :class="{
-                    'bg-green-500': gameStore.isGameActive && !gameStore.isInCheck,
-                    'bg-gray-500': !gameStore.isGameActive,
-                    'bg-red-500 animate-pulse': gameStore.isInCheck
-                }"></div>
-                <span>{{ gameStatus }}</span>
-            </div>
-
             <!-- Current Player -->
             <div v-if="gameStore.isGameActive" class="mt-2">
                 <div class="flex items-center gap-2 p-2 rounded" :class="{
@@ -256,86 +243,6 @@ const copyPGN = () => {
                     </svg>
                     Vor
                 </button>
-            </div>
-        </div>
-
-        <!-- Board Controls -->
-        <div class="border-b border-gray-100 pb-4">
-            <h4 class="text-md font-medium text-gray-700 mb-3">Brett</h4>
-
-            <div class="flex gap-2">
-                <button
-                    @click="handleFlipBoard"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 cursor-pointer bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    title="Brett drehen"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    Drehen
-                </button>
-
-                <button
-                    @click="handleShowAnalysis"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 cursor-pointer bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    title="Analyse anzeigen"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                    Analyse
-                </button>
-            </div>
-        </div>
-
-        <!-- Export/Import -->
-        <div class="border-b border-gray-100 pb-4">
-            <h4 class="text-md font-medium text-gray-700 mb-3">Export</h4>
-
-            <div class="flex gap-2">
-                <button
-                    @click="copyFEN"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 cursor-pointer border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                    title="FEN-String kopieren"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                    </svg>
-                    FEN
-                </button>
-
-                <button
-                    @click="copyPGN"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 cursor-pointer border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                    title="PGN-String kopieren"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    PGN
-                </button>
-            </div>
-        </div>
-
-        <!-- Game Info -->
-        <div>
-            <h4 class="text-md font-medium text-gray-700 mb-3">Information</h4>
-
-            <div class="space-y-2">
-                <div class="flex justify-between items-center py-1">
-                    <span class="text-sm text-gray-600">Züge:</span>
-                    <span class="text-sm font-medium text-gray-900">{{ gameStore.moveHistory.length }}</span>
-                </div>
-
-                <div class="flex justify-between items-center py-1">
-                    <span class="text-sm text-gray-600">Status:</span>
-                    <span class="text-sm font-medium text-gray-900">{{ gameStore.isGameActive ? 'Aktiv' : 'Beendet' }}</span>
-                </div>
-
-                <div v-if="gameStore.gameResult" class="flex justify-between items-center py-1">
-                    <span class="text-sm text-gray-600">Ergebnis:</span>
-                    <span class="text-sm font-medium text-gray-900">{{ gameStore.gameResult.winner || 'Remis' }}</span>
-                </div>
             </div>
         </div>
     </div>

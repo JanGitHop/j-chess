@@ -543,11 +543,13 @@ const handleExportGame = () => {
     color: #2563eb;
 }
 
+/*
 .control-btn {
     background: rgba(16, 185, 129, 0.1);
     border-color: rgba(16, 185, 129, 0.2);
     color: #059669;
 }
+*/
 
 .control-btn:hover {
     background: rgba(16, 185, 129, 0.15);
