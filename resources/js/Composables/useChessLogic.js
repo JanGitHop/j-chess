@@ -768,12 +768,14 @@ export function useChessLogic() {
 
         const isPromotion = (isWhitePawn && targetRank === 0) || (!isWhitePawn && targetRank === 7)
 
-        console.log('🎯 Promotion-Result:', {
-            targetRank,
-            isWhitePawn,
-            isPromotion,
-            rankCheck: isWhitePawn ? 'targetRank === 0' : 'targetRank === 7'
-        })
+        if (isPromotion) {
+            console.log('🎯 Promotion-Result:', {
+                targetRank,
+                isWhitePawn,
+                isPromotion,
+                rankCheck: isWhitePawn ? 'targetRank === 0' : 'targetRank === 7'
+            })
+        }
 
         return isPromotion
     }
@@ -1229,13 +1231,6 @@ export function useChessLogic() {
         })
 
         const maxRepetitions = Math.max(...Object.values(positionCounts))
-
-        console.log('🔄 Stellungswiederholung Check:', {
-            positionsTracked: positionHistory.length,
-            uniquePositions: Object.keys(positionCounts).length,
-            maxRepetitions,
-            isThreefold: maxRepetitions >= THREEFOLD_REPETITION.REPETITION_LIMIT
-        })
 
         return maxRepetitions >= THREEFOLD_REPETITION.REPETITION_LIMIT
     }

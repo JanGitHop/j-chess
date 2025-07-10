@@ -87,7 +87,6 @@ export const useGameConfigStore = defineStore('gameConfig', () => {
         }
 
         boardOrientation.value = orientation
-        console.log('🔄 Brett-Orientierung geändert zu:', orientation)
     }
 
     const flipBoard = () => {

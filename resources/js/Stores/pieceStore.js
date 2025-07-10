@@ -256,7 +256,6 @@ export const usePieceStore = defineStore('piece', () => {
 
         try {
             await Promise.all(imagePromises)
-            console.log('Alle Figuren-Bilder vorgeladen')
         } catch (error) {
             console.warn('Fehler beim Vorladen der Figuren-Bilder:', error)
         }

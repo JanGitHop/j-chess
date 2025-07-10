@@ -51,6 +51,90 @@ export const GAME_STATUS = {
     RESIGNED: 'RESIGNED'
 }
 
+// Game Modes Definition
+export const GAME_MODES = {
+    LOCAL_PVP: 'local-pvp',
+    ONLINE_PVP: 'online-pvp',
+    VS_AI: 'vs-ai',
+    ANALYSIS: 'analysis'
+}
+
+// Game Mode Settings
+export const GAME_MODE_SETTINGS = {
+    [GAME_MODES.LOCAL_PVP]: {
+        id: GAME_MODES.LOCAL_PVP,
+        name: 'Lokales PvP',
+        description: 'Zwei Spieler am gleichen Gerät',
+        allowAutoReverse: true,
+        allowUndo: true,
+        allowOfferDraw: true,
+        allowResign: true,
+        icon: '👥',
+        isOnline: false,
+        hasTimer: false,
+        disabled: false
+    },
+    [GAME_MODES.ONLINE_PVP]: {
+        id: GAME_MODES.ONLINE_PVP,
+        name: 'Online PvP',
+        description: 'Spiel gegen andere online',
+        allowAutoReverse: false,
+        allowUndo: false,
+        allowOfferDraw: true,
+        allowResign: true,
+        icon: '🌐',
+        isOnline: true,
+        hasTimer: true,
+        disabled: true // Noch nicht implementiert
+    },
+    [GAME_MODES.VS_AI]: {
+        id: GAME_MODES.VS_AI,
+        name: 'Gegen KI',
+        description: 'Spiel gegen Computer',
+        allowAutoReverse: false,
+        allowUndo: true,
+        allowOfferDraw: false,
+        allowResign: true,
+        icon: '🤖',
+        isOnline: false,
+        hasTimer: false,
+        disabled: true // Noch nicht implementiert
+    },
+    [GAME_MODES.ANALYSIS]: {
+        id: GAME_MODES.ANALYSIS,
+        name: 'Analyse-Modus',
+        description: 'Position analysieren',
+        allowAutoReverse: true,
+        allowUndo: true,
+        allowOfferDraw: false,
+        allowResign: false,
+        icon: '🔍',
+        isOnline: false,
+        hasTimer: false,
+        disabled: false
+    }
+}
+
+// Helper Functions für Game Modes
+export const isGameModeValid = (mode) => {
+    return Object.values(GAME_MODES).includes(mode)
+}
+
+export const getGameModeSettings = (mode) => {
+    return GAME_MODE_SETTINGS[mode] || GAME_MODE_SETTINGS[GAME_MODES.LOCAL_PVP]
+}
+
+export const getAvailableGameModes = () => {
+    return Object.values(GAME_MODE_SETTINGS).filter(mode => !mode.disabled)
+}
+
+export const getGameModesByFeature = (feature) => {
+    return Object.values(GAME_MODE_SETTINGS).filter(mode => mode[feature] === true)
+}
+
+// Default Game Mode
+export const DEFAULT_GAME_MODE = GAME_MODES.LOCAL_PVP
+
 export const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 export const RANKS = [8, 7, 6, 5, 4, 3, 2, 1]
 

@@ -7,6 +7,7 @@ import {useChessLogic} from '@/Composables/useChessLogic.js';
 import {useDragAndDrop} from '@/Composables/useDragAndDrop.js'
 import {squareToIndices, isLightSquare, getCSSPattern } from '@/Utils/chessUtils.js'
 import ChessPiece from '@/Components/ChessPiece.vue'
+import {GAME_MODES} from "@/Utils/chessConstants.js";
 
 const props = defineProps({
     sizeMode: {
@@ -27,8 +28,11 @@ const props = defineProps({
     },
     gameMode: {
         type: String,
-        default: 'standard',
-        validator: value => ['standard', 'analysis', 'puzzle'].includes(value)
+        default: GAME_MODES.LOCAL_PVP,
+        validator: value => {
+            const validModes = Object.values(GAME_MODES)
+            return validModes.includes(value)
+        }
     },
     showLegalMoves: {
         type: Boolean,
@@ -342,7 +346,6 @@ const handleDragEnd = (event) => {
 
 const handleDrop = (event, file, rank) => {
     const dropSquare = `${file}${rank}`
-    console.log('🎯 ChessBoard: Drop auf Feld:', dropSquare)
 
     if (!gameStore.isDragging || !gameStore.draggedFrom) {
         console.log('❌ Kein aktiver Drag-Vorgang')
@@ -352,7 +355,6 @@ const handleDrop = (event, file, rank) => {
     const moveResult = gameStore.attemptMove(gameStore.draggedFrom, dropSquare)
 
     if (moveResult.success) {
-        console.log('✅ Zug erfolgreich:', moveResult)
         emit('move', {
             from: gameStore.draggedFrom,
             to: dropSquare,
@@ -360,7 +362,6 @@ const handleDrop = (event, file, rank) => {
             success: true
         })
     } else if (moveResult.needsPromotion) {
-        console.log('🎯 ChessBoard: Promotion beim Drop erkannt!')
         emit('move', {
             from: moveResult.from,
             to: moveResult.to,

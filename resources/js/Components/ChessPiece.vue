@@ -97,7 +97,6 @@ const handleDragStart = (event) => {
 }
 
 const handleDragEnd = (event) => {
-    console.log('🎯 ChessPiece: Drag end')
     emit('dragend', event)
 }
 </script>

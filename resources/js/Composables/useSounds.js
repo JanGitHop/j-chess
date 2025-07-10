@@ -48,8 +48,6 @@ export function useSounds() {
         Object.entries(sounds).forEach(([name, path]) => {
             preloadSound(name, path)
         })
-
-        console.log('🎵 Alle Sounds vorgeladen:', Object.keys(sounds))
     }
 
     // ===== SOUND-ABSPIELEN =====
@@ -94,8 +92,6 @@ export function useSounds() {
             return
         }
 
-        console.log('🎵 playMoveSound called with:', moveData)
-
         // ⭐ PRIORITÄT: Schachmatt > Schach > Rochade > Schlagen > Bauernumwandlung > Normaler Zug
         if (moveData.isCheckmate) {
             console.log('🎵 Playing CHECKMATE sound')
@@ -110,7 +106,6 @@ export function useSounds() {
             moveData.moveType === 'capture' || moveData.moveType === 'enpassant') {
             console.log('🎵 Playing CAPTURE sound')
             playSound('capture')
-            // playSound('check')
         } else if (moveData.isPromotion || moveData.promotion || moveData.moveType === 'promotion') {
             console.log('🎵 Playing PROMOTE sound')
             playSound('promote')

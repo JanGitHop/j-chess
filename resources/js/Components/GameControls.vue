@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useGameStore } from '@/Stores/gameStore.js'
 import { useBoardStore } from '@/Stores/boardStore.js'
+import {PLAYER_COLORS} from "@/Utils/chessConstants.js";
 
 const emit = defineEmits([
     'newGame',
@@ -32,42 +33,22 @@ const gameStatus = computed(() => {
     }
 
     if (gameStore.isInCheck) {
-        return `${gameStore.currentPlayer === 'white' ? 'Weiß' : 'Schwarz'} steht im Schach`
+        return `${gameStore.currentPlayer === PLAYER_COLORS.WHITE ? 'Weiß' : 'Schwarz'} steht im Schach`
     }
 
-    return `${gameStore.currentPlayer === 'white' ? 'Weiß' : 'Schwarz'} ist am Zug`
+    return `${gameStore.currentPlayer === PLAYER_COLORS.WHITE ? 'Weiß' : 'Schwarz'} ist am Zug`
 })
 
 const currentPlayerName = computed(() => {
-    return gameStore.currentPlayer === 'white' ? 'Weiß' : 'Schwarz'
+    return gameStore.currentPlayer === PLAYER_COLORS.WHITE ? 'Weiß' : 'Schwarz'
 })
 
 const canUndo = computed(() => {
-    return gameStore.moveHistory.length > 0 && gameStore.isGameActive
+    return gameStore.canStepBackward
 })
 
 const canRedo = computed(() => {
-    // Grundlegende Validierung des GameStore
-    if (!gameStore ||
-        typeof gameStore.isGameActive !== 'boolean') {
-        return false
-    }
-
-    // Prüfen ob redoStack existiert und ein Array ist
-    if (!gameStore.redoStack ||
-        !Array.isArray(gameStore.redoStack)) {
-        return false
-    }
-
-    // Redo nur möglich wenn:
-    // 1. Das Spiel aktiv ist
-    // 2. Es Züge im Redo-Stack gibt
-    // 3. Das Spiel nicht beendet ist
-    return gameStore.isGameActive &&
-        gameStore.redoStack.length > 0 &&
-        gameStore.gameStatus !== 'FINISHED' &&
-        gameStore.gameStatus !== 'CHECKMATE' &&
-        gameStore.gameStatus !== 'STALEMATE'
+    return gameStore.canStepForward
 })
 
 const moveCount = computed(() => {
@@ -108,15 +89,20 @@ const handleOfferDraw = () => {
 
 const handleUndo = () => {
     if (canUndo.value) {
-        gameStore.undoLastMove()
-        emit('undoMove')
+        const success = gameStore.undoLastMove()
+        console.log('GameControls undo last move')
+        if (success) {
+            emit('undoMove')
+        }
     }
 }
 
 const handleRedo = () => {
     if (canRedo.value) {
-        gameStore.redoMove()
-        emit('redoMove')
+        const success = gameStore.redoMove()
+        if (success) {
+            emit('redoMove')
+        }
     }
 }
 

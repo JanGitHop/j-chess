@@ -11,6 +11,8 @@ import {
     INITIAL_FEN,
     PLAYER_COLORS,
     GAME_STATUS,
+    GAME_MODES,
+    GAME_MODE_SETTINGS,
     FIFTY_MOVE_RULE,
     THREEFOLD_REPETITION,
     isPieceOwnedByPlayer,
@@ -19,14 +21,16 @@ import {
 } from '@/Utils/chessConstants.js'
 import {cloneBoard, getPieceColor, indicesToSquare, squareToIndices} from '@/Utils/chessUtils.js'
 import { useSanGenerator } from "@/Composables/useSANGenerator.js";
+import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 
 export const useGameStore = defineStore('game', () => {
     const chessLogic = useChessLogic()
+    const configStore = useGameConfigStore()
 
     // ===== STATE =====
     const gameId = ref(null)
     const gameStatus = ref(GAME_STATUS.WAITING)
-    const gameMode = ref('standard')
+    const gameMode = ref(GAME_MODES.LOCAL_PVP)
     const whitePlayer = ref(null)
     const blackPlayer = ref(null)
 
@@ -52,6 +56,7 @@ export const useGameStore = defineStore('game', () => {
     const legalMoves = ref([])
     const moveHistory = ref([])
     const lastMove = ref(null)
+    const currentMoveIndex = ref(-1)
     const positionHistory = ref([]) // for repetition
 
     // Drag & Drop state
@@ -67,6 +72,8 @@ export const useGameStore = defineStore('game', () => {
         white: [],
         black: []
     })
+
+    const activeBoard = ref(null)
 
     // ===== COMPUTED =====
 
@@ -151,7 +158,7 @@ export const useGameStore = defineStore('game', () => {
 
     /**
      * Game Mode setzen
-     * @param {string} mode - 'standard', 'analysis', 'puzzle'
+     * @param {string} mode - GAME_MODES
      */
     const setGameMode = (mode) => {
         gameMode.value = mode
@@ -214,9 +221,7 @@ export const useGameStore = defineStore('game', () => {
             capturedPieces.value = { white: [], black: [] }
             if (typeof window !== 'undefined') {
                 // Nur im Browser ausführen, nicht auf Server-Seite
-                const { useGameConfigStore } = await import('@/Stores/gameConfigStore.js')
-                const gameConfigStore = useGameConfigStore()
-                gameConfigStore.setBoardOrientation('white')
+                configStore.setBoardOrientation('white')
             }
             console.log('Neues Spiel gestartet:', gameId.value)
         } catch (error) {
@@ -334,15 +339,9 @@ export const useGameStore = defineStore('game', () => {
 
             positionHistory.value.push(positionKey)
 
-            // Speicher begrenzen - alte Positionen entfernen
             if (positionHistory.value.length > THREEFOLD_REPETITION.POSITIONS_TO_TRACK) {
-                positionHistory.value.shift() // Entferne älteste Position
+                positionHistory.value.shift()
             }
-
-            console.log('📍 Position zur History hinzugefügt:', {
-                positionKey,
-                historyLength: positionHistory.value.length
-            })
         } catch (error) {
             console.error('Fehler beim Hinzufügen zur Position-History:', error)
         }
@@ -510,8 +509,6 @@ export const useGameStore = defineStore('game', () => {
      */
     const attemptMove = (fromSquare, toSquare, options = {}) => {
         try {
-            console.log(`🎯 attemptMove: ${fromSquare} -> ${toSquare}`, options)
-
             // Validierung
             if (!isGameActive.value) {
                 return { success: false, error: 'Spiel nicht aktiv' }
@@ -661,6 +658,8 @@ export const useGameStore = defineStore('game', () => {
 
         console.log('🎯 executeMove - Move:', targetMove)
 
+        // clearRedoStack()
+
         const tempBoard = cloneBoard(currentBoard.value)
 
         switch (targetMove.type) {
@@ -733,13 +732,6 @@ export const useGameStore = defineStore('game', () => {
             targetPiece
         )
 
-        console.log('🏰 Rochade-Rechte Update:', {
-            vorher: currentCastlingRights,
-            nachher: newCastlingRights,
-            zug: `${piece} ${fromSquare}->${toSquare}`,
-            geschlagen: targetPiece || 'keine'
-        })
-
         const moveCounters = chessLogic.calculateMoveCounters(
             piece,
             targetPiece,
@@ -747,11 +739,6 @@ export const useGameStore = defineStore('game', () => {
             fullmoveNumber.value,
             currentPlayer.value
         )
-
-        console.log('🕐 Move Counters:', {
-            halfmove: `${halfmoveClock.value} -> ${moveCounters.halfmoveClock}`,
-            fullmove: `${fullmoveNumber.value} -> ${moveCounters.fullmoveNumber}`
-        })
 
         const newFen = generateFen(
             tempBoard,
@@ -767,13 +754,23 @@ export const useGameStore = defineStore('game', () => {
 
         // Move History updaten
         const moveRecord = {
+            moveIndex: lastMove.value ? lastMove.value.moveIndex + 1 : 0,
+            fullmoveNumber: moveCounters.fullmoveNumber,
+            halfmoveClock: moveCounters.halfmoveClock,
+
+            parentMoveIndex: null,
+            isMainLine: true,
+            variantDepth: 0,
+
             from: fromSquare,
             to: toSquare,
             piece,
+            currentBoard: currentBoard.value,
             capturedPiece: targetPiece,
             promotion: null,
             isCheck: false,
             isCheckmate: false,
+            enPassantSquare: newEnPassantSquare,
             moveType: targetMove.type,
             san: generateSAN(
                 {
@@ -793,7 +790,7 @@ export const useGameStore = defineStore('game', () => {
                     gameState.value
                 )
             ),
-            fenBefore: currentFen.value,
+            fenBefore: moveHistory.value.length > 0 ? moveHistory.value[moveHistory.value.length - 1].fenAfter : INITIAL_FEN,
             fenAfter: newFen,
             timestamp: new Date(),
             capturedPieces
@@ -801,8 +798,8 @@ export const useGameStore = defineStore('game', () => {
 
         moveHistory.value.push(moveRecord)
         lastMove.value = moveRecord
+        currentMoveIndex.value = lastMove.value.moveIndex
 
-        console.log('✅ Zug erfolgreich ausgeführt:', moveRecord)
         return { success: true, move: moveRecord }
     }
 
@@ -830,6 +827,8 @@ export const useGameStore = defineStore('game', () => {
             if (isEmpty(piece)) {
                 throw new Error('Kein Piece auf Startfeld')
             }
+
+            // clearRedoStack()
 
             const targetPiece = currentBoard.value[toIndices.rankIndex][toIndices.fileIndex]
             const gameState = getCurrentGameState()
@@ -888,6 +887,14 @@ export const useGameStore = defineStore('game', () => {
             setFen(newFen)
 
             const moveRecord = {
+                moveIndex: lastMove.value ? lastMove.value.moveIndex + 1 : 0,
+                fullmoveNumber: moveCounters.fullmoveNumber,
+                halfmoveClock: moveCounters.halfmoveClock,
+
+                parentMoveIndex: null,
+                isMainLine: true,
+                variantDepth: 0,
+
                 from: fromSquare,
                 to: toSquare,
                 piece,
@@ -920,6 +927,7 @@ export const useGameStore = defineStore('game', () => {
 
             moveHistory.value.push(moveRecord)
             lastMove.value = moveRecord
+            currentMoveIndex.value = lastMove.value.moveIndex
 
             console.log('✅ Promotion-Zug erfolgreich ausgeführt:', moveRecord)
             return { success: true, move: moveRecord }
@@ -970,14 +978,341 @@ export const useGameStore = defineStore('game', () => {
 
     /**
      * Letzten Zug rückgängig machen
+     * @returns {boolean} Success status
      */
     const undoLastMove = () => {
-        if (moveHistory.value.length === 0) return false
+        console.log('🔄 undoLastMove aufgerufen')
 
-        // TODO: Implementierung
-        console.log('Zug rückgängig gemacht')
-        return true
+        if (!isGameActive.value || moveHistory.value.length === 0) {
+            console.warn('⚠️ Undo nicht möglich: Spiel nicht aktiv oder keine Züge')
+            return false
+        }
+
+        try {
+            console.log('📊 History vor Undo:', moveHistory.value.length)
+            console.log('📊 REDO STACK vor Undo:', redoStack.value.length)
+
+            const lastMoveRecord = moveHistory.value.pop()
+            if (!lastMoveRecord?.fenBefore) {
+                console.warn('⚠️ Undo nicht möglich: Kein fenBefore')
+                moveHistory.value.push(lastMoveRecord) // Rollback
+                return false
+            }
+
+            console.log('🔍 LastMoveRecord:', lastMoveRecord)
+
+            // Redo-Stack speichern
+            redoStack.value.push({
+                moveRecord: lastMoveRecord,
+                gameStatus: gameStatus.value
+            })
+
+            // Position vor dem Zug wiederherstellen
+            console.log('FEN BEFORE: ', lastMoveRecord.fenBefore)
+            console.log('FEN AFTER: ', lastMoveRecord.fenAfter)
+            const fenBefore = lastMoveRecord.fenBefore ?? INITIAL_FEN
+            console.log('🔄 Wiederherstellen von FEN:', fenBefore)
+
+            // FEN setzen
+            setFen(fenBefore)
+
+            // Aus vorherigem moveRecord rekonstruieren
+            if (moveHistory.value.length > 0) {
+                const previousMove = moveHistory.value[moveHistory.value.length - 1]
+                console.log('✅ Verwende previousMove:', previousMove)
+
+                if (previousMove.boardAfter) {
+                    currentBoard.value = previousMove.boardAfter
+                    currentPlayer.value = previousMove.playerAfter
+                    castlingRights.value = previousMove.castlingRightsAfter
+                    // enPassantSquare.value = previousMove.enPassantSquareAfter
+                    halfmoveClock.value = previousMove.halfmoveClockAfter
+                    fullmoveNumber.value = previousMove.fullmoveNumberAfter
+                }
+            }
+            // Aus FEN parsen (Fallback)
+            else {
+                console.log('⚠️ Fallback: Parse FEN direkt')
+                const parsed = parseFen(fenBefore)
+                if (parsed) {
+                    currentBoard.value = parsed.position
+                    currentPlayer.value = parsed.activeColor
+                    castlingRights.value = parsed.castlingRights
+                    // enPassantSquare.value = parsed.enPassantSquare
+                    halfmoveClock.value = parsed.halfmoveClock
+                    fullmoveNumber.value = parsed.fullmoveNumber
+                }
+            }
+
+            // Geschlagene Figur zurückgeben
+            if (lastMoveRecord.capturedPiece) {
+                const capturedColor = getPieceColor(lastMoveRecord.capturedPiece)
+                const opponentColor = capturedColor === PLAYER_COLORS.WHITE ? 'white' : 'black'
+
+                if (capturedPieces.value[opponentColor]?.length > 0) {
+                    capturedPieces.value[opponentColor].pop()
+                }
+            }
+
+            lastMove.value = moveHistory.value.length > 0
+                ? moveHistory.value[moveHistory.value.length - 1]
+                : null
+
+            // Position History bereinigen
+            if (positionHistory.value.length > 0) {
+                positionHistory.value.pop()
+            }
+
+            clearSelection()
+
+            // Check-Status aus vorherigem Zug rekonstruieren
+            if (lastMove.value?.isCheck) {
+                isInCheck.value = true
+                checkForCheck() // Sicherheitshalber neu berechnen
+            } else {
+                isInCheck.value = false
+                checkingPieces.value = []
+            }
+
+            if ([GAME_STATUS.CHECKMATE, GAME_STATUS.STALEMATE, GAME_STATUS.DRAW_FIFTY_MOVE, GAME_STATUS.DRAW_REPETITION].includes(gameStatus.value)) {
+                gameStatus.value = isInCheck.value ? GAME_STATUS.CHECK : GAME_STATUS.ACTIVE
+            }
+
+            return true
+
+        } catch (error) {
+            console.error('❌ Fehler beim Undo:', error)
+            return false
+        }
     }
+
+    /**
+     * Zug wiederholen (Redo)
+     * @returns {boolean} Success status
+     */
+    const redoMove = () => {
+        try {
+            console.log('🔄 redoMove aufgerufen')
+
+            // Validierungen
+            if (!isGameActive.value) {
+                console.warn('Redo nicht möglich: Spiel nicht aktiv')
+                return false
+            }
+
+            if (redoStack.value.length === 0) {
+                console.warn('Redo nicht möglich: Kein Zug im Redo-Stack')
+                return false
+            }
+
+            console.log('📊 REDO STACK vor Redo:', redoStack.value.length)
+            const redoState = redoStack.value.pop()
+            if (!redoState || !redoState.moveRecord) {
+                console.warn('Redo nicht möglich: Ungültiger Redo-Zustand')
+                return false
+            }
+
+            const redoMoveRecord = redoState.moveRecord
+            console.log('🔄 Redo moveRecord:', redoMoveRecord)
+
+            // ✅ 1. FEN setzen (parsiert Board, Player, etc.)
+            setFen(redoMoveRecord.fenAfter)
+
+            // ✅ 2. Move History wiederherstellen
+            moveHistory.value.push(redoMoveRecord)
+            lastMove.value = redoMoveRecord
+
+            // ✅ 3. Captured Pieces NACH FEN setzen (überschreibt Parser-Werte)
+            if (redoMoveRecord.capturedPieces) {
+                capturedPieces.value = { ...redoMoveRecord.capturedPieces }
+            }
+
+            // ✅ 4. Game State wiederherstellen
+            gameStatus.value = redoState.gameStatus
+
+            // ✅ 5. Check-Status aus moveRecord
+            isInCheck.value = redoMoveRecord.isCheck || false
+            checkingPieces.value = redoMoveRecord.checkingPieces || []
+
+            // ✅ 6. Position zur History hinzufügen
+            const positionKey = chessLogic.createPositionKey(redoMoveRecord.fenAfter)
+            if (positionKey) {
+                positionHistory.value.push(positionKey)
+            }
+
+            // ✅ 7. Auswahl löschen
+            clearSelection()
+
+            console.log('✅ Zug erfolgreich wiederholt:', {
+                redoneMove: redoMoveRecord.san,
+                moveIndex: redoMoveRecord.moveIndex,
+                fullmoveNumber: redoMoveRecord.fullmoveNumber,
+                newPosition: currentFen.value,
+                redoStackSize: redoStack.value.length,
+                historyLength: moveHistory.value.length
+            })
+
+            return true
+
+        } catch (error) {
+            console.error('❌ Fehler beim Redo:', error)
+            return false
+        }
+    }
+
+    /**
+     * Zu bestimmtem Zug springen (Navigation)
+     * @param {number} targetMoveIndex - Ziel-moveIndex (-1 für Startposition)
+     * @returns {boolean} Success status
+     */
+    const goToMove = (targetMoveIndex) => {
+        try {
+            console.log('🎯 goToMove aufgerufen:', targetMoveIndex)
+
+            // Startposition
+            if (targetMoveIndex < 0) {
+                setFen(INITIAL_FEN)
+                lastMove.value = null
+                clearSelection()
+
+                // Game State zurücksetzen
+                gameStatus.value = GAME_STATUS.ACTIVE
+                isInCheck.value = false
+                checkingPieces.value = []
+
+                console.log('✅ Zur Startposition gesprungen')
+                return true
+            }
+
+            // Validierung
+            if (targetMoveIndex >= moveHistory.value.length) {
+                console.warn('goToMove: Ungültiger moveIndex:', targetMoveIndex)
+                return false
+            }
+
+            // Ziel-Zug finden
+            const targetMove = moveHistory.value.find(moveRecord => moveRecord.moveIndex === targetMoveIndex)
+            if (!targetMove) {
+                console.warn('goToMove: Zug mit moveIndex nicht gefunden:', targetMoveIndex)
+                return false
+            }
+
+            // Position setzen
+            setFen(targetMove.fenAfter)
+            lastMove.value = targetMove
+            clearSelection()
+
+            // Spielzustand neu bewerten (ohne Post-Move-Checks)
+            checkForCheck()
+
+            console.log('✅ Zu Zug gesprungen:', {
+                targetIndex: targetMoveIndex,
+                move: targetMove.san,
+                fullmove: targetMove.fullmoveNumber,
+                position: targetMove.fenAfter
+            })
+
+            return true
+
+        } catch (error) {
+            console.error('❌ Fehler bei goToMove:', error)
+            return false
+        }
+    }
+
+    /**
+     * Einen Zug vor
+     * @returns {boolean}
+     */
+    const stepForward = () => {
+        const currentIndex = lastMove.value?.moveIndex ?? -1
+        return goToMove(currentIndex + 1)
+    }
+
+    /**
+     * Einen Zug zurück
+     * @returns {boolean}
+     */
+    const stepBackward = () => {
+        const currentIndex = lastMove.value?.moveIndex ?? 0
+        return goToMove(currentIndex - 1)
+    }
+
+    /**
+     * Zum Spielende springen
+     * @returns {boolean}
+     */
+    const goToEnd = () => {
+        if (moveHistory.value.length === 0) return false
+        const lastMoveIndex = moveHistory.value[moveHistory.value.length - 1].moveIndex
+        return goToMove(lastMoveIndex)
+    }
+
+    /**
+     * Zum Spielanfang springen
+     * @returns {boolean}
+     */
+    const goToStart = () => {
+        return goToMove(-1)
+    }
+
+    /**
+     * Hilfsfunktion: Geschlagene Figur wiederherstellen
+     * @param {string} capturedPiece
+     */
+    const restoreCapturedPiece = (capturedPiece) => {
+        if (!capturedPieces.value) {
+            capturedPieces.value = { white: [], black: [] }
+        }
+
+        const capturedColor = getPieceColor(capturedPiece)
+
+        if (capturedPieces.value[capturedColor]) {
+            // Suche die Figur und entferne sie aus der captured-Liste
+            const capturedList = capturedPieces.value[capturedColor]
+
+            // Finde den letzten Eintrag dieser Figur
+            for (let i = capturedList.length - 1; i >= 0; i--) {
+                const captured = capturedList[i]
+                const capturedType = typeof captured === 'string' ? captured : captured.notation
+
+                if (capturedType === capturedPiece) {
+                    capturedList.splice(i, 1)
+                    console.log('Geschlagene Figur wiederhergestellt:', capturedPiece)
+                    break
+                }
+            }
+        }
+    }
+
+    const canUndo = computed(() => {
+        return configStore.gameModeSettings.allowUndo &&
+            moveHistory.value.length > 0 &&
+            isGameActive.value
+    })
+
+    /**
+     * Navigation - computed properties
+     */
+    const canStepForward = computed(() => {
+        return isGameActive.value && redoStack.value.length > 0
+    })
+
+    const canStepBackward = computed(() => {
+        return isGameActive && currentMoveIndex.value >= 0
+    })
+
+    const canGoToStart = computed(() => {
+        return currentMoveIndex.value !== -1
+    })
+
+    const canGoToEnd = computed(() => {
+        const currentIndex = currentMoveIndex.value
+        const lastIndex = moveHistory.value.length > 0
+            ? moveHistory.value[moveHistory.value.length - 1].moveIndex
+            : -1
+        return currentIndex !== lastIndex
+    })
 
     /**
      * Spiel aufgeben
@@ -1038,10 +1373,15 @@ export const useGameStore = defineStore('game', () => {
         executeMove,
         executePromotionMove,
         checkGameStatus,
-        undoLastMove,
         resignGame,
         gotoMove,
-        redoStack,
+        undoLastMove,
+        redoMove,
+        redoStack: computed(() => redoStack.value),
+        canStepForward,
+        canStepBackward,
+        canGoToStart,
+        canGoToEnd,
 
         checkForCheck,
         checkForCheckmate,

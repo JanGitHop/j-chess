@@ -12,8 +12,8 @@ import BoardInfo from "@/Components/BoardInfo.vue";
 import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
-import { useSounds } from "../../Composables/useSounds.js";
-import { GAME_STATUS, FIFTY_MOVE_RULE } from '@/Utils/chessConstants.js'
+import { useSounds } from "@/Composables/useSounds.js";
+import {GAME_STATUS, FIFTY_MOVE_RULE, GAME_MODES} from '@/Utils/chessConstants.js'
 import GameHeader from '@/Components/GameHeader.vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
@@ -26,7 +26,7 @@ const props = defineProps({
     },
     gameMode: {
         type: String,
-        default: 'standard' // 'standard', 'analysis', 'puzzle'
+        default: GAME_MODES.LOCAL_PVP
     },
     playerColor: {
         type: String,
@@ -233,22 +233,10 @@ const handleFlipBoard = (newOrientation) => {
 const performAutoReverse = () => {
     if (!configStore.shouldAutoReverse) return
 
-    console.log('🔄 Auto-Reverse wird durchgeführt')
-
-    // Kurze Verzögerung für visuellen Effekt
-    setTimeout(() => {
+    if (gameStore.currentPlayer !== configStore.boardOrientation) {
         const newOrientation = configStore.flipBoard()
-
-    /*
-    addNotification({
-        type: 'info',
-        message: `🔄 Brett automatisch gedreht - ${newOrientation === 'white' ? 'Weiß' : 'Schwarz'} unten`,
-        duration: 1500
-    })
-    */
-    }, 300)
+    }
 }
-
 
 /**
  * Board Events - Piece Click
@@ -379,7 +367,6 @@ const handleExportGame = () => {
  * Move Handler mit Auto-Reverse Integration
  */
 const handleMoveCompleted = (moveData) => {
-    console.log('FEN:', gameStore.currentFen)
     lastMoveTime.value = new Date()
 
     const lastMoveRecord = gameStore.lastMove
@@ -401,8 +388,6 @@ const handleMoveCompleted = (moveData) => {
         moveType: lastMoveRecord?.moveType
     }
 
-    console.log('🔍 Enhanced Move Data:', enhancedMoveData)
-
     playMoveSound(enhancedMoveData)
 
     // AUTO-REVERSE nach erfolgreichem Zug
@@ -411,7 +396,7 @@ const handleMoveCompleted = (moveData) => {
     }
 
     // Engine-Antwort auslösen (falls KI-Spiel)
-    if (props.gameMode === 'standard' && shouldTriggerEngineMove()) {
+    if (props.gameMode === GAME_MODES.VS_AI && shouldTriggerEngineMove()) {
         setTimeout(() => {
             // engineStore.makeMove()
         }, 500)
@@ -502,20 +487,9 @@ const handleNewGame = () => {
     }
 }
 
-const handleUndoMove = () => {
-    const success = gameStore.undoLastMove()
-    if (success) {
-        addNotification({
-            type: 'info',
-            message: 'Zug rückgängig gemacht',
-            duration: 2000
-        })
+const handleUndoMove = () => {}
 
-        if (soundEnabled.value) {
-            playGameSound('undo')
-        }
-    }
-}
+const handleRedoMove = () => {}
 
 const handleResignGame = () => {
     if (confirm('Möchten Sie wirklich aufgeben?')) {
@@ -654,6 +628,13 @@ const handleKeydown = (event) => {
         handleUndoMove()
     }
 
+    // Ctrl/Cmd + Shift + Z oder Ctrl/Cmd + Y: Zug wiederholen
+    if ((event.ctrlKey || event.metaKey) &&
+        ((event.key === 'z' && event.shiftKey) || event.key === 'y')) {
+        event.preventDefault()
+        handleRedoMove()
+    }
+
     // Escape: Auswahl abbrechen
     if (event.key === 'Escape') {
         gameStore.clearSelection()
@@ -705,6 +686,12 @@ watch(() => gameStore.halfmoveClock, (newHalfmoves, oldHalfmoves) => {
     }
 })
 
+watch(() => configStore.shouldAutoReverse, (newValue) => {
+    if (newValue) {
+        performAutoReverse() // Sofort beim Aktivieren
+    }
+})
+
 // ===== LIFECYCLE =====
 
 onMounted(async () => {
@@ -728,14 +715,12 @@ onMounted(async () => {
 
     try {
         await pieceStore.preloadPieceImages()
-        console.log('Figuren-Bilder erfolgreich vorgeladen')
     } catch (error) {
         console.warn('Preloading der Figuren-Bilder fehlgeschlagen:', error)
     }
 
     try {
         preloadAllSounds()
-        console.log('🎵 Sound-System erfolgreich initialisiert')
     } catch (error) {
         console.warn('🔇 Sound-System Initialisierung fehlgeschlagen:', error)
     }
@@ -855,6 +840,7 @@ onUnmounted(() => {
                         :game-mode="props.gameMode"
                         @new-game="handleNewGame"
                         @undo-move="handleUndoMove"
+                        @redo-move="handleRedoMove"
                         @resign="handleResignGame"
                         @offer-draw="handleOfferDraw"
                         class="sidebar-section"
