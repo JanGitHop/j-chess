@@ -150,8 +150,6 @@ const copyPGN = () => {
 
         <!-- Game Actions -->
         <div class="border-b border-gray-100 pb-4">
-            <h4 class="text-md font-medium text-gray-700 mb-3">Aktionen</h4>
-
             <div class="flex flex-col gap-2">
                 <!-- Resign -->
                 <button

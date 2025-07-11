@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import ChessBoard from '@/Components/ChessBoard.vue'
 import BoardSettings from '@/Components/BoardSettings.vue'
+import GameSidebar from "@/Components/GameSidebar.vue";
 import MoveHistory from '@/Components/MoveHistory.vue'
 import GameControls from '@/Components/GameControls.vue'
 import PlayerInfo from '@/Components/PlayerInfo.vue'
@@ -844,46 +845,25 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Sidebar -->
-                <aside class="game-sidebar" :class="{ 'sidebar--collapsed': sidebarCollapsed }">
-                    <!-- Player Info -->
-                    <PlayerInfo
-                        v-if="showPlayerInfo"
-                        :game-state="gameState"
-                        :time-control="props.timeControl"
-                        :player-color="props.playerColor"
-                        class="sidebar-section"
-                    />
-
-                    <!-- Game Controls -->
-                    <GameControls
-                        v-if="showGameControls"
-                        :game-state="gameState"
-                        :game-mode="props.gameMode"
-                        @new-game="handleNewGame"
-                        @undo-move="handleUndoMove"
-                        @redo-move="handleRedoMove"
-                        @resign="handleResignGame"
-                        @offer-draw="handleOfferDraw"
-                        class="sidebar-section"
-                    />
-
-                    <!-- Move History -->
-                    <MoveHistory
-                        v-if="showMoveHistory"
-                        :moves="gameStore.moveHistory"
-                        :current-move="gameStore.currentMoveIndex"
-                        @goto-move="gameStore.gotoMove"
-                        class="sidebar-section sidebar-section--expandable"
-                    />
-
-                    <!-- Board Settings Compact -->
-                    <BoardInfo
-                        v-if="showBoardInfo"
-                        class="sidebar-section"
-                        :show-title="true"
-                        :show-fen="true"
-                    />
-                </aside>
+                <GameSidebar
+                    :collapsed="sidebarCollapsed"
+                    :game-state="gameState"
+                    :time-control="props.timeControl"
+                    :player-color="props.playerColor"
+                    :game-mode="props.gameMode"
+                    :move-history="gameStore.moveHistory"
+                    :current-move-index="gameStore.currentMoveIndex"
+                    :show-player-info="showPlayerInfo"
+                    :show-game-controls="showGameControls"
+                    :show-move-history="showMoveHistory"
+                    :show-board-info="showBoardInfo"
+                    @new-game="handleNewGame"
+                    @undo-move="handleUndoMove"
+                    @redo-move="handleRedoMove"
+                    @resign="handleResignGame"
+                    @offer-draw="handleOfferDraw"
+                    @goto-move="gameStore.gotoMove"
+                />
             </main>
         </div>
 
@@ -937,18 +917,6 @@ onUnmounted(() => {
     justify-content: center;
     padding: 1rem;
     min-height: 0;
-}
-
-.game-sidebar {
-    grid-area: sidebar;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.95);
-    border-left: 1px solid #e2e8f0;
-    overflow-y: auto;
-    transition: all 300ms ease;
 }
 
 /* Fullscreen Mode */
