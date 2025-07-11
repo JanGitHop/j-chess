@@ -14,7 +14,7 @@ import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
 import { useSounds } from "@/Composables/useSounds.js";
-import {GAME_STATUS, FIFTY_MOVE_RULE, GAME_MODES} from '@/Utils/chessConstants.js'
+import {GAME_STATUS, FIFTY_MOVE_RULE, GAME_MODES, GAME_STATUS as GAME_STATUSES} from '@/Utils/chessConstants.js'
 import GameHeader from '@/Components/GameHeader.vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
@@ -108,6 +108,10 @@ const boardOrientation = computed(() => {
 
 const showCoordinates = computed(() => {
     return configStore.showCoordinates
+})
+
+const currentMoveIndex = computed(() => {
+    return gameStore.currentMoveIndex ?? -1
 })
 
 // Material-Vorteil berechnen
@@ -387,10 +391,6 @@ const handleMoveCompleted = (moveData) => {
 
     const lastMoveRecord = gameStore.lastMove
 
-    gameStore.checkForCheck(gameState)
-    gameStore.checkForCheckmate(gameState)
-    gameStore.checkForStalemate(gameState)
-
     const enhancedMoveData = {
         ...moveData,
         isCapture: lastMoveRecord?.moveType === 'capture' ||
@@ -400,7 +400,7 @@ const handleMoveCompleted = (moveData) => {
         isCastling: lastMoveRecord?.moveType === 'castle',
         isPromotion: lastMoveRecord?.moveType === 'promotion',
         isCheck: gameStore.isInCheck,
-        isCheckmate: gameStore.gameStatus === 'CHECKMATE',
+        isCheckmate: gameStore.gameStatus === GAME_STATUSES.CHECKMATE,
         moveType: lastMoveRecord?.moveType
     }
 

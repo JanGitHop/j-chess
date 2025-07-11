@@ -147,6 +147,10 @@ export const useGameStore = defineStore('game', () => {
         return { ...gameState.value }
     }
 
+    const getCurrentMoveIndex = computed(() => {
+        return currentMoveIndex.value ?? -1
+    })
+
     const createGameStateSnapshot = (overrides = {}) => {
         return {
             ...getCurrentGameState(),
@@ -430,7 +434,11 @@ export const useGameStore = defineStore('game', () => {
     }
 
     const checkForCheckmate = () => {
-        if (!isInCheck.value) {
+        if (gameStatus.value === GAME_STATUS.CHECKMATE) {
+            return true
+        }
+
+        if (!checkForCheck()) {
             return false
         }
 
@@ -439,7 +447,7 @@ export const useGameStore = defineStore('game', () => {
             currentPlayer.value,
             gameState.value
         )
-
+        console.log('LEGAL MOVES NUMBER: ', legalMoves.length)
         const isCheckmate = legalMoves.length === 0
 
         if (isCheckmate) {
@@ -1355,6 +1363,7 @@ export const useGameStore = defineStore('game', () => {
         currentPlayer,
         currentFEN: currentFen,
         isGameActive,
+        currentMoveIndex,
         canCurrentPlayerMove,
         hasSelection,
         selectedPiece,
