@@ -52,6 +52,7 @@ const configStore = useGameConfigStore()
 // UI State
 const showSettings = ref(false)
 const showMoveHistory = ref(true)
+const showBoardInfo = ref(false)
 const showPlayerInfo = ref(true)
 const showGameControls = ref(true)
 const isFullscreen = ref(false)
@@ -328,6 +329,20 @@ const handleNewGameFromHeader = () => {
 }
 
 /**
+ * Board Info Toggle
+ */
+const toggleBoardInfo = () => {
+    showBoardInfo.value = !showBoardInfo.value
+    console.log('📊 Board-Info umgeschaltet:', showBoardInfo.value)
+
+    addNotification({
+        type: 'info',
+        message: `Board-Info ${showBoardInfo.value ? 'angezeigt' : 'ausgeblendet'}`,
+        duration: 2000
+    })
+}
+
+/**
  * SPIEL EXPORTIEREN
  */
 const handleExportGame = () => {
@@ -525,6 +540,10 @@ const closeSettings = () => {
 
 const toggleSidebar = () => {
     sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+const handleToggleBoardInfo = () => {
+    showBoardInfo.value = !showBoardInfo.value
 }
 
 const toggleFullscreen = () => {
@@ -749,9 +768,11 @@ onUnmounted(() => {
                 game-title="Schach"
                 :show-settings="true"
                 :show-sidebar-toggle="true"
+                :show-board-info="showBoardInfo"
                 @flip-board="handleFlipBoard"
                 @game-mode-changed="handleGameModeChanged"
                 @toggle-sidebar="toggleSidebar"
+                @toggle-board-info="handleToggleBoardInfo"
                 @open-settings="openSettings"
                 @new-game="handleNewGameFromHeader"
                 @export-game="handleExportGame"
@@ -857,6 +878,7 @@ onUnmounted(() => {
 
                     <!-- Board Settings Compact -->
                     <BoardInfo
+                        v-if="showBoardInfo"
                         class="sidebar-section"
                         :show-title="true"
                         :show-fen="true"

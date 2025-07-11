@@ -16,6 +16,10 @@ const props = defineProps({
     showSidebarToggle: {
         type: Boolean,
         default: true
+    },
+    showBoardInfo: {
+        type: Boolean,
+        default: false
     }
 })
 
@@ -23,6 +27,7 @@ const emit = defineEmits([
     'flip-board',
     'game-mode-changed',
     'toggle-sidebar',
+    'toggle-board-info',
     'open-settings',
     'new-game',
     'export-game'
@@ -158,6 +163,11 @@ const toggleLastMoveHighlight = () => {
 const toggleAnimations = () => {
     const newValue = !boardStore.settings.animateCaptures
     boardStore.updateSetting('animateCaptures', newValue)
+}
+
+// Board-Info Toggle
+const toggleBoardInfo = () => {
+    emit('toggle-board-info')
 }
 
 // Spiel-Aktionen
@@ -360,6 +370,20 @@ const handleExportGame = () => {
                                 />
                                 <span class="toggle-slider"></span>
                                 <span class="toggle-label">Animationen</span>
+                            </label>
+                        </div>
+
+                        <div class="settings-section">
+                            <h4 class="settings-title">Sidebar-Einstellungen</h4>
+
+                            <label class="toggle-control">
+                                <input
+                                    type="checkbox"
+                                    :checked="props.showBoardInfo"
+                                    @change="toggleBoardInfo"
+                                />
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Board-Info anzeigen</span>
                             </label>
                         </div>
 
