@@ -1123,32 +1123,29 @@ export const useGameStore = defineStore('game', () => {
             const redoMoveRecord = redoState.moveRecord
             console.log('🔄 Redo moveRecord:', redoMoveRecord)
 
-            // ✅ 1. FEN setzen (parsiert Board, Player, etc.)
             setFen(redoMoveRecord.fenAfter)
 
-            // ✅ 2. Move History wiederherstellen
             moveHistory.value.push(redoMoveRecord)
             lastMove.value = redoMoveRecord
 
-            // ✅ 3. Captured Pieces NACH FEN setzen (überschreibt Parser-Werte)
             if (redoMoveRecord.capturedPieces) {
                 capturedPieces.value = { ...redoMoveRecord.capturedPieces }
             }
 
-            // ✅ 4. Game State wiederherstellen
+            if (redoMoveRecord.capturedPiece) {
+                addCapturedPiece(redoMoveRecord.capturedPiece)
+            }
+
             gameStatus.value = redoState.gameStatus
 
-            // ✅ 5. Check-Status aus moveRecord
             isInCheck.value = redoMoveRecord.isCheck || false
             checkingPieces.value = redoMoveRecord.checkingPieces || []
 
-            // ✅ 6. Position zur History hinzufügen
             const positionKey = chessLogic.createPositionKey(redoMoveRecord.fenAfter)
             if (positionKey) {
                 positionHistory.value.push(positionKey)
             }
 
-            // ✅ 7. Auswahl löschen
             clearSelection()
 
             console.log('✅ Zug erfolgreich wiederholt:', {
