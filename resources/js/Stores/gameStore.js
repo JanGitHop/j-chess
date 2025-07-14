@@ -1100,9 +1100,6 @@ export const useGameStore = defineStore('game', () => {
      */
     const redoMove = () => {
         try {
-            console.log('🔄 redoMove aufgerufen')
-
-            // Validierungen
             if (!isGameActive.value) {
                 console.warn('Redo nicht möglich: Spiel nicht aktiv')
                 return false
@@ -1113,7 +1110,6 @@ export const useGameStore = defineStore('game', () => {
                 return false
             }
 
-            console.log('📊 REDO STACK vor Redo:', redoStack.value.length)
             const redoState = redoStack.value.pop()
             if (!redoState || !redoState.moveRecord) {
                 console.warn('Redo nicht möglich: Ungültiger Redo-Zustand')
@@ -1147,15 +1143,6 @@ export const useGameStore = defineStore('game', () => {
             }
 
             clearSelection()
-
-            console.log('✅ Zug erfolgreich wiederholt:', {
-                redoneMove: redoMoveRecord.san,
-                moveIndex: redoMoveRecord.moveIndex,
-                fullmoveNumber: redoMoveRecord.fullmoveNumber,
-                newPosition: currentFen.value,
-                redoStackSize: redoStack.value.length,
-                historyLength: moveHistory.value.length
-            })
 
             return true
 

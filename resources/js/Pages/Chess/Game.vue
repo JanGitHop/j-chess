@@ -17,6 +17,7 @@ import { useSounds } from "@/Composables/useSounds.js";
 import {GAME_STATUS, FIFTY_MOVE_RULE, GAME_MODES, GAME_STATUS as GAME_STATUSES} from '@/Utils/chessConstants.js'
 import GameHeader from '@/Components/GameHeader.vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
+import ChessTimer from "@/Components/chessTimer.vue";
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 
 // Props (falls über Inertia.js übergeben)
@@ -64,6 +65,11 @@ const promotionData = ref({
     fromSquare: null,
     toSquare: null,
     playerColor: null
+})
+
+const chessBoardRef = ref(null)
+const currentBoardSize = computed(() => {
+    return chessBoardRef.value?.boardSize || 480
 })
 
 // Game State
@@ -806,14 +812,23 @@ onUnmounted(() => {
                 <!-- Board Area -->
                 <div class="board-area">
                     <!-- Top Captured Pieces -->
-                    <div class="captured-pieces-top">
-                        <CapturedPieces
+                    <div class="board-top-row">
+                        <div class="left-element">
+                            <CapturedPieces
                             :captured-pieces="topCapturedPieces.pieces"
                             :player-color="topPlayerColor"
                             :material-advantage="topCapturedPieces.advantage"
                             size="medium"
                             layout="horizontal"
-                        />
+                            />
+                        </div>
+                        <div class="right-element">
+                            <ChessTimer
+                                :player="topPlayerColor"
+                                :active="gameState.currentPlayer === topPlayerColor"
+                                :game-active="gameState.isGameActive"
+                            />
+                        </div>
                     </div>
 
                     <ChessBoard
@@ -833,7 +848,8 @@ onUnmounted(() => {
                     />
 
                 <!-- Bottom Captured Pieces -->
-                <div class="captured-pieces-bottom">
+                    <div class="board-bottom-row">
+                        <div class="left-element">
                     <CapturedPieces
                         :captured-pieces="bottomCapturedPieces.pieces"
                         :player-color="bottomPlayerColor"
@@ -841,7 +857,15 @@ onUnmounted(() => {
                         size="medium"
                         layout="horizontal"
                     />
-                </div>
+                        </div>
+                        <div class="right-element">
+                            <ChessTimer
+                                :player="bottomPlayerColor"
+                                :active="gameState.currentPlayer === bottomPlayerColor"
+                                :game-active="gameState.isGameActive"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Sidebar -->
@@ -1117,11 +1141,25 @@ onUnmounted(() => {
 }
 
 .board-area {
-    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: 0.75rem;
+}
+
+.board-top-row,
+.board-bottom-row {
+    display: grid;
+    grid: auto-flow / repeat(2, 1fr);
+    justify-content: space-between;
+    width: 100%;
+}
+
+.left-element {
+    display: flex;
+}
+
+.right-element {
+    display: flex;
 }
 
 .captured-pieces-top,

@@ -128,6 +128,10 @@ const boardSize = computed(() => {
     return 480
 })
 
+defineExpose({
+    boardSize
+})
+console.log(boardSize.value)
 const squareSize = computed(() => Math.floor(boardSize.value / 8))
 const coordinateSpace = computed(() => 0)
 const totalSize = computed(() => boardSize.value)
