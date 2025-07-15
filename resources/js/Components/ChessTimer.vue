@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useChessTimerStore } from '@/Stores/chessTimerStore.js'
 import { TIME_CONTROL_TYPES, TIMER_STATES, TIMER_EVENTS } from '@/Stores/chessTimerStore.js'
+import {PLAYER_COLORS} from "@/Utils/chessConstants.js";
 
 const props = defineProps({
     player: {
@@ -101,9 +102,17 @@ const timeWarningLevel = computed(() => {
  */
 const timerStatus = computed(() => {
     if (timerStore.isUnlimitedTime) return 'unlimited'
+
+    // Nur der aktive Spieler zeigt "waiting" oder "active"
+    if (props.player === timerStore.activePlayer) {
+        if (timerStore.timerState === TIMER_STATES.WAITING) return 'waiting'
+        if (timerStore.timerState === TIMER_STATES.RUNNING) return 'active'
+    }
+
+    // Globale Zustände für beide
     if (timerStore.timerState === TIMER_STATES.EXPIRED && isActive.value) return 'expired'
     if (timerStore.timerState === TIMER_STATES.PAUSED) return 'paused'
-    if (isActive.value) return 'active'
+
     return 'inactive'
 })
 
@@ -132,6 +141,7 @@ const incrementText = computed(() => {
  */
 const timerIcon = computed(() => {
     if (timerStore.isUnlimitedTime) return '∞'
+    if (timerStatus.value === 'waiting') return '⏳'
     if (timerStatus.value === 'expired') return '⏰'
     if (timerStatus.value === 'paused') return '⏸️'
     if (timerStatus.value === 'active') return '▶️'
@@ -163,8 +173,12 @@ const timerClasses = computed(() => {
 const timerStyle = computed(() => {
     const style = {}
 
-    // Farb-Themen basierend auf Warnstufe
-    if (timeWarningLevel.value === 'critical') {
+    // Farb-Themen basierend auf Status
+    if (timerStatus.value === 'waiting') {
+        style.backgroundColor = 'rgba(255, 165, 0, 0.8)'
+        style.color = '#333'
+        style.borderColor = '#ffa500'
+    } else if (timeWarningLevel.value === 'critical') {
         style.backgroundColor = 'rgba(220, 53, 69, 0.9)'
         style.color = 'white'
         style.borderColor = '#dc3545'
@@ -466,6 +480,18 @@ onUnmounted(() => {
     position: absolute;
     top: -4px;
     right: -4px;
+}
+
+/* Wartezustand-Styles */
+.timer-waiting {
+    font-size: 0.6em;
+    opacity: 0.7;
+    margin-top: 2px;
+    font-style: italic;
+}
+
+.chess-timer--waiting {
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
 }
 
 .status-dot {

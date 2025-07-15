@@ -1,10 +1,10 @@
 /**
- * Chess Timer Store - Vollständige Zeitkontrolle für Schachspiele
+ * Chess Timer Store: Vollständige Zeitkontrolle für Schachspiele
  * Verwaltet Timer für beide Spieler, verschiedene Zeitkontroll-Modi und Increment-Funktionen
  */
 
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
 // Zeit-Konstanten
 export const TIME_CONTROL_TYPES = {
@@ -31,7 +31,7 @@ export const TIME_CONTROL_PRESETS = {
         initialTime: 60, // 1 Minute
         increment: 0,
         delay: 0,
-        icon: '⚡'
+        icon: '🎯'
     },
     [TIME_CONTROL_TYPES.BLITZ]: {
         name: 'Blitz',
@@ -61,6 +61,7 @@ export const TIME_CONTROL_PRESETS = {
 
 export const TIMER_STATES = {
     STOPPED: 'stopped',
+    WAITING: 'waiting',
     RUNNING: 'running',
     PAUSED: 'paused',
     EXPIRED: 'expired'
@@ -78,7 +79,6 @@ export const TIMER_EVENTS = {
     CRITICAL_TIME: 'critical_time'
 }
 
-// Warnschwellen (in Sekunden)
 export const WARNING_THRESHOLDS = {
     LOW_TIME: 60,      // 1 Minute
     CRITICAL_TIME: 10   // 10 Sekunden
@@ -99,7 +99,7 @@ export const useChessTimerStore = defineStore('chessTimer', () => {
 
     // Timer-Zustand
     const timerState = ref(TIMER_STATES.STOPPED)
-    const activePlayer = ref('white') // 'white' oder 'black'
+    const activePlayer = ref('white')
 
     // Zeit-Werte (in Sekunden)
     const whiteTime = ref(0)
@@ -298,7 +298,7 @@ export const useChessTimerStore = defineStore('chessTimer', () => {
             originalBlackTime.value = 0
         }
 
-        timerState.value = TIMER_STATES.STOPPED
+        timerState.value = isUnlimitedTime.value ? TIMER_STATES.STOPPED : TIMER_STATES.WAITING
         activePlayer.value = 'white'
         moveTimings.value = []
         gameStartTime.value = null
@@ -306,6 +306,10 @@ export const useChessTimerStore = defineStore('chessTimer', () => {
 
         console.log('Timer initialisiert:', config)
     }
+
+    const isTimerWaiting = computed(() => {
+        return timerState.value === TIMER_STATES.WAITING
+    })
 
     /**
      * Timer starten
@@ -414,52 +418,46 @@ export const useChessTimerStore = defineStore('chessTimer', () => {
 
     /**
      * Spieler wechseln (nach einem Zug)
-     * @param {number} moveStartTime - Zeitpunkt des Zugbeginns
+     * @param nextPlayer
      */
-    const switchPlayer = (moveStartTime = null) => {
+    const switchPlayer = (nextPlayer) => {
         if (isUnlimitedTime.value) return
 
-        const moveEndTime = performance.now()
         const previousPlayer = activePlayer.value
-
-        // Zeit für den Zug berechnen
-        let moveTime = 0
-        if (moveStartTime) {
-            moveTime = (moveEndTime - moveStartTime) / 1000 // in Sekunden
-        }
 
         // Increment hinzufügen
         const increment = effectiveTimeControl.value.increment || 0
         if (increment > 0) {
-            if (activePlayer.value === 'white') {
+            if (previousPlayer === 'white') {
                 whiteTime.value += increment
             } else {
                 blackTime.value += increment
             }
         }
 
+        // Zeit für vorherigen Spieler erfassen
+        const timeUsedForMove = previousPlayer === 'white' ? whiteTime.value : blackTime.value
+
         // Move-Timing speichern
         moveTimings.value.push({
             player: previousPlayer,
             moveNumber: Math.ceil(moveTimings.value.length / 2) + 1,
-            timeUsed: moveTime,
-            timeRemaining: currentPlayerTime.value,
+            timeRemaining: timeUsedForMove,
             increment: increment,
             timestamp: new Date()
         })
 
-        // Spieler wechseln
-        activePlayer.value = activePlayer.value === 'white' ? 'black' : 'white'
+        // Tick-Zeit setzen und Spieler wechseln
         lastTickTime.value = performance.now()
+        activePlayer.value = nextPlayer // ← Parameter verwenden!
 
         emitEvent(TIMER_EVENTS.SWITCH, {
             fromPlayer: previousPlayer,
-            toPlayer: activePlayer.value,
-            moveTime: moveTime,
+            toPlayer: nextPlayer,
             increment: increment
         })
 
-        console.log(`Spieler gewechselt: ${previousPlayer} -> ${activePlayer.value}`)
+        console.log(`Spieler gewechselt: ${previousPlayer} -> ${nextPlayer}`)
     }
 
     /**
@@ -687,6 +685,7 @@ export const useChessTimerStore = defineStore('chessTimer', () => {
         currentPreset,
         effectiveTimeControl,
         isTimerActive,
+        isTimerWaiting,
         isTimerPaused,
         isUnlimitedTime,
         formattedWhiteTime,

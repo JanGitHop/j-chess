@@ -14,10 +14,17 @@ import { useBoardStore } from '@/Stores/boardStore'
 import { useGameStore } from '@/Stores/gameStore'
 import { usePieceStore } from '@/Stores/pieceStore'
 import { useSounds } from "@/Composables/useSounds.js";
-import {GAME_STATUS, FIFTY_MOVE_RULE, GAME_MODES, GAME_STATUS as GAME_STATUSES} from '@/Utils/chessConstants.js'
+import {
+    GAME_STATUS,
+    FIFTY_MOVE_RULE,
+    GAME_MODES,
+    GAME_STATUS as GAME_STATUSES,
+    PLAYER_COLORS
+} from '@/Utils/chessConstants.js'
 import GameHeader from '@/Components/GameHeader.vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
-import ChessTimer from "@/Components/chessTimer.vue";
+import ChessTimer from "@/Components/ChessTimer.vue";
+import {useChessTimerStore} from "@/Stores/chessTimerStore.js";
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 
 // Props (falls über Inertia.js übergeben)
@@ -32,7 +39,7 @@ const props = defineProps({
     },
     playerColor: {
         type: String,
-        default: 'white' // 'white', 'black', 'both'
+        default: PLAYER_COLORS.WHITE
     },
     timeControl: {
         type: Object,
@@ -49,6 +56,7 @@ const boardStore = useBoardStore()
 const gameStore = useGameStore()
 const pieceStore = usePieceStore()
 const configStore = useGameConfigStore()
+const timerStore = useChessTimerStore()
 // const engineStore = useGameEngineStore()
 
 // UI State
@@ -162,7 +170,6 @@ const capturedPiecesData = computed(() => {
     }
 })
 
-// Welche Captured Pieces oben/unten anzeigen (basierend auf Board-Orientation)
 const topCapturedPieces = computed(() => {
     return boardOrientation.value === 'white'
         ? capturedPiecesData.value.black  // Weiß oben wenn Board normal
@@ -228,15 +235,6 @@ const handleSquareClick = (squareData) => {
  */
 const handleFlipBoard = (newOrientation) => {
     console.log('🔄 Brett manuell gedreht zu:', newOrientation)
-
-    // Wichtig: Das Brett wird bereits im Store gedreht durch flipBoard()
-    // Die newOrientation kommt aus dem Store zurück
-
-    addNotification({
-        type: 'info',
-        message: `Brett gedreht - ${newOrientation === 'white' ? 'Weiß' : 'Schwarz'} unten`,
-        duration: 2000
-    })
 }
 
 /**
@@ -495,18 +493,18 @@ const handleStalemate = (stalemateData) => {
 /**
  * Game Controls Events
  */
-const handleNewGame = () => {
-    if (confirm('Möchten Sie wirklich ein neues Spiel starten?')) {
-        gameStore.resetGame()
-        gameStartTime.value = new Date()
-        clearNotifications()
-
-        addNotification({
-            type: 'success',
-            message: 'Neues Spiel gestartet',
-            duration: 2000
-        })
+const handleNewGame = async (gameData) => {
+    try {
+        await gameStore.initializeGameWithTimer(gameData)
+        console.log('Spiel mit Timer gestartet')
+    } catch (error) {
+        console.error('Fehler beim Spielstart:', error)
     }
+}
+
+// Timer-Event-Handler
+const handleTimerExpired = (data) => {
+    gameStore.handleTimerExpired(data)
 }
 
 const handleUndoMove = () => {}
@@ -731,6 +729,8 @@ onMounted(async () => {
 
     gameStartTime.value = new Date()
 
+    timerStore.on('expired', handleTimerExpired)
+
     // Event-Listener
     document.addEventListener('keydown', handleKeydown)
 
@@ -762,6 +762,7 @@ onMounted(async () => {
 onUnmounted(() => {
     document.removeEventListener('keydown', handleKeydown)
     document.body.classList.remove('fullscreen')
+    timerStore.off('expired', handleTimerExpired)
 })
 </script>
 
@@ -824,9 +825,10 @@ onUnmounted(() => {
                         </div>
                         <div class="right-element">
                             <ChessTimer
-                                :player="topPlayerColor"
+                                :player="bottomPlayerColor"
                                 :active="gameState.currentPlayer === topPlayerColor"
                                 :game-active="gameState.isGameActive"
+                                @timer-expired="handleTimerExpired"
                             />
                         </div>
                     </div>
@@ -860,9 +862,10 @@ onUnmounted(() => {
                         </div>
                         <div class="right-element">
                             <ChessTimer
-                                :player="bottomPlayerColor"
+                                :player="topPlayerColor"
                                 :active="gameState.currentPlayer === bottomPlayerColor"
                                 :game-active="gameState.isGameActive"
+                                @timer-expired="handleTimerExpired"
                             />
                         </div>
                     </div>

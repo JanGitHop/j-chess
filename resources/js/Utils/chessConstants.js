@@ -48,7 +48,9 @@ export const GAME_STATUS = {
     DRAW_REPETITION: 'DRAW_REPETITION',
     DRAW_AGREEMENT: 'DRAW_AGREEMENT',
     DRAW_INSUFFICIENT: 'DRAW_INSUFFICIENT',
-    RESIGNED: 'RESIGNED'
+    RESIGNED: 'RESIGNED',
+    WHITE_WINS_TIME: 'white_wins_time',
+    BLACK_WINS_TIME: 'black_wins_time'
 }
 
 // Game Modes Definition

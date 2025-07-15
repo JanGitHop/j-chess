@@ -17,15 +17,17 @@ import {
     THREEFOLD_REPETITION,
     isPieceOwnedByPlayer,
     isEmpty,
-    isWhitePiece
+    isWhitePiece, PLAYER_COLORS as PLAYER_COLOR
 } from '@/Utils/chessConstants.js'
 import {cloneBoard, getPieceColor, indicesToSquare, squareToIndices} from '@/Utils/chessUtils.js'
-import { useSanGenerator } from "@/Composables/useSANGenerator.js";
+import { useSanGenerator } from "@/Composables/useSANGenerator.js"
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
+import { useChessTimerStore } from "@/Stores/chessTimerStore.js"
 
 export const useGameStore = defineStore('game', () => {
     const chessLogic = useChessLogic()
     const configStore = useGameConfigStore()
+    const timerStore = useChessTimerStore()
 
     // ===== STATE =====
     const gameId = ref(null)
@@ -167,6 +169,22 @@ export const useGameStore = defineStore('game', () => {
     const setGameMode = (mode) => {
         gameMode.value = mode
         console.log('Game Mode gesetzt auf:', mode)
+    }
+
+    const initializeGameWithTimer = async (options = {}) => {
+        try {
+            await initializeGame(options)
+
+            if (options.timeControl) {
+                timerStore.setTimeControl(options.timeControl, options.customTimeControl)
+            }
+
+            console.log('Spiel mit Timer initialisiert:', options)
+            return Promise.resolve()
+        } catch (error) {
+            console.error('Fehler beim Initialisieren des Spiels mit Timer:', error)
+            return Promise.reject(error)
+        }
     }
 
     /**
@@ -605,14 +623,24 @@ export const useGameStore = defineStore('game', () => {
 
         if (!isGameActive.value) return
 
+        // Timer-Ablauf prüfen
+        if (timerStore.timerState === 'expired') {
+            const expiredPlayer = timerStore.activePlayer
+            gameStatus.value = expiredPlayer === 'white' ? GAME_STATUS.BLACK_WINS_TIME : GAME_STATUS.WHITE_WINS_TIME
+            console.log(`🕐 Zeit abgelaufen! ${expiredPlayer === 'white' ? 'Schwarz' : 'Weiß'} gewinnt`)
+            return
+        }
+
         const checkmateResult = checkForCheckmate()
         if (checkmateResult) {
+            timerStore.stopTimer()
             console.log('🎯 Schachmatt erkannt, Spiel beendet')
             return
         }
 
         const stalemateResult = checkForStalemate()
         if (stalemateResult) {
+            timerStore.stopTimer()
             console.log('🎯 Patt erkannt, Spiel beendet')
             return
         }
@@ -620,11 +648,13 @@ export const useGameStore = defineStore('game', () => {
         const repetitionResult = checkForThreefoldRepetition()
         if (repetitionResult) {
             console.log('🎯 3-fache Stellungswiederholung erkannt, Spiel beendet')
+            timerStore.stopTimer()
             return
         }
 
         const fiftyMoveResult = checkForFiftyMoveRule()
         if (fiftyMoveResult) {
+            timerStore.stopTimer()
             console.log('🎯 50-Züge-Regel erfüllt, Spiel beendet')
             return
         }
@@ -805,6 +835,24 @@ export const useGameStore = defineStore('game', () => {
         }
 
         moveHistory.value.push(moveRecord)
+
+        if (moveHistory.value.length === 1) {
+            // Nach dem ersten Zug ist activePlayer bereits auf 'black' gewechselt
+            if (!timerStore.isUnlimitedTime) {
+            console.log('CURRENT PLAYER: ', currentPlayer.value)
+                timerStore.switchPlayer(currentPlayer.value)
+                timerStore.startTimer()
+                console.log(timerStore.timerState)
+                console.log('⏰ Timer gestartet nach erstem Zug von Weiß')
+            }
+        } else if (timerStore.isTimerActive) {
+                console.log(timerStore.timerState)
+            console.log('CURRENT PLAYER: ', currentPlayer.value)
+            // Bei allen weiteren Zügen: Timer wechseln
+            console.log('NEXT PLAYER: ', nextPlayer)
+            timerStore.switchPlayer(currentPlayer.value)
+        }
+
         lastMove.value = moveRecord
         currentMoveIndex.value = lastMove.value.moveIndex
 
@@ -862,6 +910,7 @@ export const useGameStore = defineStore('game', () => {
             }
 
             const nextPlayer = currentPlayer.value === 'white' ? 'black' : 'white'
+            timerStore.switchPlayer(nextPlayer)
 
             const currentCastlingRights = castlingRights.value
             const newCastlingRights = chessLogic.updateCastlingRights(
@@ -943,6 +992,41 @@ export const useGameStore = defineStore('game', () => {
         } catch (error) {
             console.error('Fehler beim Promotion-Zug:', error)
             return { success: false, error: error.message }
+        }
+    }
+
+    // Timer-Event-Handler hinzufügen
+    const handleTimerExpired = (data) => {
+        try {
+            const expiredPlayer = data.player
+
+            // Spielstatus auf Zeitüberschreitung setzen
+            if (expiredPlayer === 'white') {
+                gameStatus.value = GAME_STATUS.BLACK_WINS_TIME
+            } else {
+                gameStatus.value = GAME_STATUS.WHITE_WINS_TIME
+            }
+
+            console.log(`⏰ ZEIT ABGELAUFEN! ${expiredPlayer === 'white' ? 'Schwarz' : 'Weiß'} gewinnt durch Zeitüberschreitung`)
+
+            // Spiel beenden
+            timerStore.stopTimer()
+
+        } catch (error) {
+            console.error('Fehler beim Timer-Ablauf:', error)
+        }
+    }
+
+    // Neue Funktion zum Pausieren/Fortsetzen
+    const pauseGame = () => {
+        if (timerStore.isTimerActive) {
+            timerStore.pauseTimer()
+        }
+    }
+
+    const resumeGame = () => {
+        if (timerStore.timerState === 'paused') {
+            timerStore.resumeTimer()
         }
     }
 
@@ -1375,6 +1459,11 @@ export const useGameStore = defineStore('game', () => {
         canStepBackward,
         canGoToStart,
         canGoToEnd,
+
+        initializeGameWithTimer,
+        handleTimerExpired,
+        pauseGame,
+        resumeGame,
 
         checkForCheck,
         checkForCheckmate,

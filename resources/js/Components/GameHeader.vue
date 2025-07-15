@@ -3,6 +3,7 @@ import { ref, computed, nextTick } from 'vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { useBoardStore } from '@/Stores/boardStore.js'
 import { useSounds } from '@/Composables/useSounds.js'
+import NewGameModal from '@/Components/NewGameModal.vue'
 
 const props = defineProps({
     gameTitle: {
@@ -52,6 +53,7 @@ const showGameMenu = ref(false)
 const showThemeDropdown = ref(false)
 const showAudioDropdown = ref(false)
 const showSettingsDropdown = ref(false)
+const showNewGameModal = ref(false)
 
 // ===== DROPDOWN MANAGEMENT =====
 const closeModeDropdownDelayed = () => {
@@ -170,12 +172,37 @@ const toggleBoardInfo = () => {
     emit('toggle-board-info')
 }
 
-// Spiel-Aktionen
+// ===== MODAL HANDLERS =====
+
+// Neues Spiel Modal öffnen
 const handleNewGame = () => {
     showGameMenu.value = false
-    emit('new-game')
+    closeAllDropdowns()
+    showNewGameModal.value = true
 }
 
+// Modal schließen
+const closeNewGameModal = () => {
+    showNewGameModal.value = false
+}
+
+const toggleGamePause = () => {
+    if (timerStore.isTimerActive) {
+        timerStore.pauseTimer()
+    } else if (timerStore.timerState === 'paused') {
+        timerStore.resumeTimer()
+    }
+}
+
+// Spiel gestartet - Event weiterleiten
+const handleGameStarted = (gameData) => {
+    showNewGameModal.value = false
+    emit('new-game', gameData)
+
+    console.log('Neues Spiel gestartet vom Header:', gameData)
+}
+
+// Spiel exportieren
 const handleExportGame = () => {
     showGameMenu.value = false
     emit('export-game')
@@ -494,11 +521,18 @@ const handleExportGame = () => {
             @click="closeAllDropdowns"
         ></div>
     </header>
+
+    <!-- New Game Modal -->
+    <NewGameModal
+        :show="showNewGameModal"
+        @close="closeNewGameModal"
+        @gameStarted="handleGameStarted"
+    />
 </template>
 
 <!-- Style bleibt komplett unverändert -->
 <style scoped>
-/* Alle bisherigen Styles bleiben identisch */
+/* ... [Alle bestehenden Styles unverändert] ... */
 .game-header {
     background: rgba(248, 250, 252, 0.95);
     border-bottom: 1px solid #e2e8f0;
@@ -566,14 +600,6 @@ const handleExportGame = () => {
     border-color: rgba(59, 130, 246, 0.3);
     color: #2563eb;
 }
-
-/*
-.control-btn {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.2);
-    color: #059669;
-}
-*/
 
 .control-btn:hover {
     background: rgba(16, 185, 129, 0.15);
