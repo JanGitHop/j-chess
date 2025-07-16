@@ -403,7 +403,7 @@ const generatePGN = () => {
 }
 
 .move-number {
-    @apply text-sm font-medium text-gray-600 text-right pr-2;
+    @apply text-sm font-medium text-gray-200 text-right pr-2;
     min-width: 30px;
 }
 

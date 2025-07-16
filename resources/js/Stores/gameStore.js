@@ -664,7 +664,100 @@ export const useGameStore = defineStore('game', () => {
         return attemptMove(fromSquare, toSquare, { promotion: promotionPiece })
     }
 
-    const executeMove = (fromSquare, toSquare) => {
+    const executeMove = (fromSquare, toSquare, promotionPiece = null) => {
+        try {
+            const validationResult = validateMoveCoordinates(fromSquare, toSquare)
+            if (!validationResult.success) {
+                return validationResult
+            }
+
+            const { fromIndices, toIndices } = validationResult.data
+            const piece = currentBoard.value[fromIndices.rankIndex][fromIndices.fileIndex]
+
+            if (isEmpty(piece)) {
+                throw new Error('Kein Piece auf Startfeld')
+            }
+
+            const targetPiece = currentBoard.value[toIndices.rankIndex][toIndices.fileIndex]
+            const gameState = getCurrentGameState()
+            const tempBoard = cloneBoard(currentBoard.value)
+
+            let targetMove = null
+
+            // Promotion-Logik
+            if (promotionPiece) {
+                const isCapture = !isEmpty(targetPiece)
+
+                if (isCapture) {
+                    addCapturedPiece(targetPiece)
+                    console.log('🎯 Promotion mit Eroberung:', targetPiece, 'geschlagen')
+                }
+
+                tempBoard[toIndices.rankIndex][toIndices.fileIndex] = promotionPiece
+                tempBoard[fromIndices.rankIndex][fromIndices.fileIndex] = null
+
+                console.log('🎯 Promotion ausgeführt:', piece, '->', promotionPiece, 'auf', toSquare)
+
+                targetMove = {
+                    from: fromSquare,
+                    to: toSquare,
+                    type: 'promotion',
+                    piece,
+                    promotionPiece,
+                    capturedPiece: targetPiece
+                }
+            } else {
+                const possibleMoves = chessLogic.generatePossibleMoves(piece, fromSquare, currentBoard.value, gameState)
+                targetMove = possibleMoves.find(move => move.to === toSquare)
+
+                if (!targetMove) {
+                    throw new Error('Illegaler Zug')
+                }
+
+                handleSpecialMoves(targetMove, tempBoard, targetPiece)
+
+                tempBoard[toIndices.rankIndex][toIndices.fileIndex] = piece
+                tempBoard[fromIndices.rankIndex][fromIndices.fileIndex] = null
+            }
+
+            if (!chessLogic.isMoveLegal(currentBoard.value, fromSquare, toSquare, currentPlayer.value, gameState)) {
+                return { success: false, error: 'Zug würde König ins Schach setzen' }
+            }
+
+            const nextPlayer = currentPlayer.value === 'white' ? 'black' : 'white'
+            const newEnPassantSquare = promotionPiece ? null : calculateEnPassantSquare(piece, fromIndices, toIndices)
+            const newCastlingRights = chessLogic.updateCastlingRights(castlingRights.value, fromSquare, toSquare, piece, targetPiece)
+            const moveCounters = chessLogic.calculateMoveCounters(piece, targetPiece, halfmoveClock.value, fullmoveNumber.value, currentPlayer.value)
+
+            const newFen = generateFen(tempBoard, nextPlayer, newCastlingRights, newEnPassantSquare, moveCounters.halfmoveClock, moveCounters.fullmoveNumber)
+            console.log('🎯 Neue FEN:', newFen)
+            setFen(newFen)
+
+            // Timer-Update (für Promotion-Züge)
+            if (promotionPiece) {
+                timerStore.switchPlayer(nextPlayer)
+            }
+
+            const moveType = targetMove.type
+            const moveRecord = createMoveRecord(fromSquare, toSquare, piece, targetPiece, promotionPiece, moveType, moveCounters, newEnPassantSquare, newFen)
+            finalizeMove(moveRecord)
+
+            if (promotionPiece) {
+                console.log('✅ Promotion-Zug erfolgreich ausgeführt:', moveRecord)
+            }
+
+            return { success: true, move: moveRecord }
+        } catch (error) {
+            console.error('Fehler beim Zug:', error)
+            return { success: false, error: error.message }
+        }
+    }
+
+    const executePromotionMove = (fromSquare, toSquare, promotionPiece) => {
+        return executeMove(fromSquare, toSquare, promotionPiece)
+    }
+
+    const validateMoveCoordinates = (fromSquare, toSquare) => {
         const fromIndices = squareToIndices(fromSquare)
         const toIndices = squareToIndices(toSquare)
 
@@ -673,33 +766,13 @@ export const useGameStore = defineStore('game', () => {
         }
 
         if (!capturedPieces.value) {
-            capturedPieces.value = {
-                white: [],
-                black: []
-            }
+            capturedPieces.value = { white: [], black: [] }
         }
 
-        const piece = currentBoard.value[fromIndices.rankIndex][fromIndices.fileIndex]
-        if (isEmpty(piece)) {
-            throw new Error('Kein Piece auf Startfeld')
-        }
-        const targetPiece = currentBoard.value[toIndices.rankIndex][toIndices.fileIndex]
+        return { success: true, data: { fromIndices, toIndices } }
+    }
 
-        const gameState = getCurrentGameState()
-
-        const possibleMoves = chessLogic.generatePossibleMoves(piece, fromSquare, currentBoard.value, gameState)
-        const targetMove = possibleMoves.find(move => move.to === toSquare)
-
-        if (!targetMove) {
-            throw new Error('Illegaler Zug')
-        }
-
-        console.log('🎯 executeMove - Move:', targetMove)
-
-        // clearRedoStack()
-
-        const tempBoard = cloneBoard(currentBoard.value)
-
+    const handleSpecialMoves = (targetMove, tempBoard, targetPiece) => {
         switch (targetMove.type) {
             case 'enpassant':
                 const capturedSquareIndices = squareToIndices(targetMove.capturedSquare)
@@ -712,121 +785,72 @@ export const useGameStore = defineStore('game', () => {
                     }
                 }
                 break
-
             case 'capture':
                 addCapturedPiece(targetPiece)
                 break
-
             case 'castle':
-                const rookMove = chessLogic.getCastlingRookMove(fromSquare, toSquare)
+                const rookMove = targetMove.rookMove
                 if (rookMove) {
                     const rookFromIndices = squareToIndices(rookMove.from)
                     const rookToIndices = squareToIndices(rookMove.to)
-
                     if (rookFromIndices && rookToIndices) {
                         const rook = tempBoard[rookFromIndices.rankIndex][rookFromIndices.fileIndex]
-
                         tempBoard[rookToIndices.rankIndex][rookToIndices.fileIndex] = rook
                         tempBoard[rookFromIndices.rankIndex][rookFromIndices.fileIndex] = null
+                        console.log('🎯 Rochade: Bewege Turm von', rookMove.from, 'nach', rookMove.to)
                     }
                 }
                 break
         }
+    }
 
-        // move piece
-        tempBoard[toIndices.rankIndex][toIndices.fileIndex] = piece
-        tempBoard[fromIndices.rankIndex][fromIndices.fileIndex] = null
-
-        if (!chessLogic.isMoveLegal(currentBoard.value, fromSquare, toSquare, currentPlayer.value, gameState.value)) {
-            return { success: false, error: 'Zug würde König ins Schach setzen' }
-        }
-
-        const nextPlayer = currentPlayer.value === 'white' ? 'black' : 'white'
-
-        let newEnPassantSquare = null
-
-        // check if a pawn made a double move
+    const calculateEnPassantSquare = (piece, fromIndices, toIndices) => {
         const pieceType = piece?.toLowerCase()
         if (pieceType === 'p') {
             const rankDistance = Math.abs(toIndices.rankIndex - fromIndices.rankIndex)
-
             if (rankDistance === 2) {
                 const isWhitePawnMove = isWhitePiece(piece)
                 const startRank = isWhitePawnMove ? 6 : 1
-
                 if (fromIndices.rankIndex === startRank) {
                     const enPassantRank = isWhitePawnMove ? 5 : 2
-                    newEnPassantSquare = indicesToSquare(toIndices.fileIndex, enPassantRank)
+                    return indicesToSquare(toIndices.fileIndex, enPassantRank)
                 }
             }
         }
+        return null
+    }
 
-        const currentCastlingRights = castlingRights.value
-        const newCastlingRights = chessLogic.updateCastlingRights(
-            currentCastlingRights,
-            fromSquare,
-            toSquare,
-            piece,
-            targetPiece
-        )
-
-        const moveCounters = chessLogic.calculateMoveCounters(
-            piece,
-            targetPiece,
-            halfmoveClock.value,
-            fullmoveNumber.value,
-            currentPlayer.value
-        )
-
-        const newFen = generateFen(
-            tempBoard,
-            nextPlayer,
-            newCastlingRights,
-            newEnPassantSquare,
-            moveCounters.halfmoveClock,
-            moveCounters.fullmoveNumber
-        )
-
-        console.log('🎯 Neue FEN:', newFen)
-        setFen(newFen)
-
-        // Move History updaten
+    const createMoveRecord = (fromSquare, toSquare, piece, targetPiece, promotionPiece, moveType, moveCounters, enPassantSquare, newFen) => {
         const moveRecord = {
             moveIndex: lastMove.value ? lastMove.value.moveIndex + 1 : 0,
             fullmoveNumber: moveCounters.fullmoveNumber,
             halfmoveClock: moveCounters.halfmoveClock,
-
             parentMoveIndex: null,
             isMainLine: true,
             variantDepth: 0,
-
             from: fromSquare,
             to: toSquare,
             piece,
             currentBoard: currentBoard.value,
             capturedPiece: targetPiece,
-            promotion: null,
+            promotion: promotionPiece,
             isCheck: false,
             isCheckmate: false,
-            enPassantSquare: newEnPassantSquare,
-            moveType: targetMove.type,
+            enPassantSquare,
+            moveType,
             san: generateSAN(
                 {
                     from: fromSquare,
                     to: toSquare,
                     piece,
                     capturedPiece: targetPiece,
-                    promotion: null,
+                    promotion: promotionPiece,
                     isCheck: false,
                     isCheckmate: false,
-                    moveType: targetMove.type
+                    moveType
                 },
                 currentBoard.value,
-                chessLogic.getAllLegalMoves(
-                    currentBoard.value,
-                    currentPlayer.value,
-                    gameState.value
-                )
+                chessLogic.getAllLegalMoves(currentBoard.value, currentPlayer.value, getCurrentGameState())
             ),
             fenBefore: moveHistory.value.length > 0 ? moveHistory.value[moveHistory.value.length - 1].fenAfter : INITIAL_FEN,
             fenAfter: newFen,
@@ -834,173 +858,34 @@ export const useGameStore = defineStore('game', () => {
             capturedPieces
         }
 
+        if (promotionPiece) {
+            moveRecord.promotionPiece = promotionPiece
+            moveRecord.isCapture = !isEmpty(targetPiece)
+        }
+
+        return moveRecord
+    }
+
+    const finalizeMove = (moveRecord) => {
         moveHistory.value.push(moveRecord)
 
         if (moveHistory.value.length === 1) {
-            // Nach dem ersten Zug ist activePlayer bereits auf 'black' gewechselt
             if (!timerStore.isUnlimitedTime) {
-            console.log('CURRENT PLAYER: ', currentPlayer.value)
                 timerStore.switchPlayer(currentPlayer.value)
                 timerStore.startTimer()
-                console.log(timerStore.timerState)
-                console.log('⏰ Timer gestartet nach erstem Zug von Weiß')
             }
         } else if (timerStore.isTimerActive) {
-                console.log(timerStore.timerState)
-            console.log('CURRENT PLAYER: ', currentPlayer.value)
-            // Bei allen weiteren Zügen: Timer wechseln
-            console.log('NEXT PLAYER: ', nextPlayer)
             timerStore.switchPlayer(currentPlayer.value)
         }
 
         lastMove.value = moveRecord
         currentMoveIndex.value = lastMove.value.moveIndex
-
-        return { success: true, move: moveRecord }
     }
 
-    /**
-     * Promotion-Zug ausführen
-     * @param {string} fromSquare
-     * @param {string} toSquare
-     * @param {string} promotionPiece - z.B. 'Q', 'R', 'B', 'N'
-     * @returns {object}
-     */
-    const executePromotionMove = (fromSquare, toSquare, promotionPiece) => {
-        try {
-            const fromIndices = squareToIndices(fromSquare)
-            const toIndices = squareToIndices(toSquare)
-
-            if (!fromIndices || !toIndices) {
-                return { success: false, error: 'Ungültige Koordinaten' }
-            }
-
-            if (!capturedPieces.value) {
-                capturedPieces.value = { white: [], black: [] }
-            }
-
-            const piece = currentBoard.value[fromIndices.rankIndex][fromIndices.fileIndex]
-            if (isEmpty(piece)) {
-                throw new Error('Kein Piece auf Startfeld')
-            }
-
-            // clearRedoStack()
-
-            const targetPiece = currentBoard.value[toIndices.rankIndex][toIndices.fileIndex]
-            const gameState = getCurrentGameState()
-            const isCapture = !isEmpty(targetPiece)
-
-            // Board kopieren
-            const tempBoard = cloneBoard(currentBoard.value)
-
-            // Geschlagene Figur behandeln
-            if (isCapture) {
-                addCapturedPiece(targetPiece)
-                console.log('🎯 Promotion mit Eroberung:', targetPiece, 'geschlagen')
-            }
-
-            // **PROMOTION:**
-            tempBoard[toIndices.rankIndex][toIndices.fileIndex] = promotionPiece
-            tempBoard[fromIndices.rankIndex][fromIndices.fileIndex] = null
-
-            console.log('🎯 Promotion ausgeführt:', piece, '->', promotionPiece, 'auf', toSquare)
-
-            if (!chessLogic.isMoveLegal(currentBoard.value, fromSquare, toSquare, currentPlayer.value, gameState)) {
-                return { success: false, error: 'Zug würde König ins Schach setzen' }
-            }
-
-            const nextPlayer = currentPlayer.value === 'white' ? 'black' : 'white'
-            timerStore.switchPlayer(nextPlayer)
-
-            const currentCastlingRights = castlingRights.value
-            const newCastlingRights = chessLogic.updateCastlingRights(
-                currentCastlingRights,
-                fromSquare,
-                toSquare,
-                piece,
-                targetPiece
-            )
-            const currentHalfmoveClock = halfmoveClock.value
-            const currentFullmoveNumber = fullmoveNumber.value
-
-            const moveCounters = chessLogic.calculateMoveCounters(
-                piece,
-                targetPiece,
-                halfmoveClock.value,
-                fullmoveNumber.value,
-                currentPlayer.value
-            )
-
-            const newFen = generateFen(
-                tempBoard,
-                nextPlayer,
-                newCastlingRights,
-                null,
-                moveCounters.halfmoveClock,
-                moveCounters.fullmoveNumber
-            )
-
-            console.log('🎯 Neue FEN nach Promotion:', newFen)
-            setFen(newFen)
-
-            const moveRecord = {
-                moveIndex: lastMove.value ? lastMove.value.moveIndex + 1 : 0,
-                fullmoveNumber: moveCounters.fullmoveNumber,
-                halfmoveClock: moveCounters.halfmoveClock,
-
-                parentMoveIndex: null,
-                isMainLine: true,
-                variantDepth: 0,
-
-                from: fromSquare,
-                to: toSquare,
-                piece,
-                promotionPiece,
-                san: generateSAN(
-                    {
-                        from: fromSquare,
-                        to: toSquare,
-                        piece: piece,
-                        capturedPiece: targetPiece,
-                        promotion: promotionPiece,
-                        isCheck: false,
-                        isCheckmate: false,
-                        moveType: 'promotion'
-                    },
-                    currentBoard.value,
-                    chessLogic.getAllLegalMoves(
-                        currentBoard.value,
-                        currentPlayer.value,
-                        gameState.value
-                    )
-                ),
-                fenBefore: currentFen.value,
-                fenAfter: newFen,
-                timestamp: new Date(),
-                moveType: 'promotion',
-                capturedPiece: targetPiece,
-                isCapture: !isEmpty(targetPiece)
-            }
-
-            moveHistory.value.push(moveRecord)
-            lastMove.value = moveRecord
-            currentMoveIndex.value = lastMove.value.moveIndex
-
-            console.log('✅ Promotion-Zug erfolgreich ausgeführt:', moveRecord)
-            return { success: true, move: moveRecord }
-
-        } catch (error) {
-            console.error('Fehler beim Promotion-Zug:', error)
-            return { success: false, error: error.message }
-        }
-    }
-
-    // Timer-Event-Handler hinzufügen
     const handleTimerExpired = (data) => {
         try {
             const expiredPlayer = data.player
 
-            // Spielstatus auf Zeitüberschreitung setzen
             if (expiredPlayer === 'white') {
                 gameStatus.value = GAME_STATUS.BLACK_WINS_TIME
             } else {
@@ -1009,7 +894,6 @@ export const useGameStore = defineStore('game', () => {
 
             console.log(`⏰ ZEIT ABGELAUFEN! ${expiredPlayer === 'white' ? 'Schwarz' : 'Weiß'} gewinnt durch Zeitüberschreitung`)
 
-            // Spiel beenden
             timerStore.stopTimer()
 
         } catch (error) {
@@ -1017,7 +901,6 @@ export const useGameStore = defineStore('game', () => {
         }
     }
 
-    // Neue Funktion zum Pausieren/Fortsetzen
     const pauseGame = () => {
         if (timerStore.isTimerActive) {
             timerStore.pauseTimer()
