@@ -42,7 +42,15 @@ export function useSounds() {
             'stalemate': '/sounds/default/game-draw.mp3',
             'undo': '/sounds/default/premove.mp3',
             'gameStart': '/sounds/default/event-start.mp3',
-            'gameEnd': '/sounds/default/event-end.mp3'
+            'gameEnd': '/sounds/default/event-end.mp3',
+            'tenSeconds': '/sounds/default/tenseconds.mp3',
+            'timeOut': '/sounds/default/game-lose.mp3',
+            'gameWin': '/sounds/default/game-win.mp3',
+            'gameLose': '/sounds/default/game-lose.mp3',
+            'gameDraw': '/sounds/default/game-draw.mp3',
+            'eventWarning': '/sounds/default/event-warning.mp3',
+            'decline': '/sounds/default/decline.mp3',
+            'illegal': '/sounds/default/illegal.mp3'
         }
 
         Object.entries(sounds).forEach(([name, path]) => {
@@ -129,7 +137,14 @@ export function useSounds() {
             'undo': () => playSound('undo'),
             'resign': () => playSound('gameEnd'),
             'timeout': () => playSound('gameEnd'),
-            'notification': () => playSound('notify')
+            'notification': () => playSound('notify'),
+            'tenSecondsWarning': () => playSound('tenSeconds'),
+            'timeExpired': () => playSound('timeOut'),
+            'gameWin': () => playSound('gameWin'),
+            'gameLose': () => playSound('gameLose'),
+            'illegalMove': () => playSound('illegal'),
+            'gameDeclined': () => playSound('decline'),
+            'eventWarning': () => playSound('eventWarning')
         }
 
         const soundFunction = soundMap[eventType]
@@ -137,6 +152,62 @@ export function useSounds() {
             soundFunction()
         } else {
             console.warn(`🔇 Unbekannter Game-Event Sound: ${eventType}`)
+        }
+    }
+
+    /**
+     * Timer-basierte Sounds
+     */
+    const playTimerSound = (timerEvent, timeRemaining = 0) => {
+        switch (timerEvent) {
+            case 'tenSeconds':
+                console.log('🎵 Playing 10-SECONDS WARNING sound')
+                playSound('tenSeconds')
+                break
+            case 'timeExpired':
+                console.log('🎵 Playing TIME EXPIRED sound')
+                playSound('timeOut')
+                break
+            case 'lowTime':
+                // Warnung bei wenig Zeit (z.B. 30 Sekunden)
+                playSound('eventWarning')
+                break
+        }
+    }
+
+    /**
+     * Game-Over Sounds basierend auf Spielausgang
+     */
+    const playGameOverSound = (gameStatus, currentPlayer) => {
+        switch (gameStatus) {
+            case 'CHECKMATE':
+                console.log('🎵 Playing CHECKMATE sound')
+                playSound('checkmate')
+                break
+            case 'STALEMATE':
+                console.log('🎵 Playing STALEMATE sound')
+                playSound('stalemate')
+                break
+            case 'DRAW_REPETITION':
+                console.log('🎵 Playing DRAW (repetition) sound')
+                playSound('gameDraw')
+                break
+            case 'DRAW_FIFTY_MOVE':
+                console.log('🎵 Playing DRAW (fifty move) sound')
+                playSound('gameDraw')
+                break
+            case 'WHITE_WINS_TIME':
+            case 'BLACK_WINS_TIME':
+                console.log('🎵 Playing TIME OUT sound')
+                playSound('timeOut')
+                break
+            case 'RESIGNATION':
+                console.log('🎵 Playing RESIGNATION sound')
+                playSound('gameEnd')
+                break
+            default:
+                console.log('🎵 Playing generic GAME END sound')
+                playSound('gameEnd')
         }
     }
 
@@ -211,6 +282,8 @@ export function useSounds() {
         playMoveSound,
         playGameSound,
         playUISound,
+        playGameOverSound,
+        playTimerSound,
 
         // Einstellungen
         toggleSound,

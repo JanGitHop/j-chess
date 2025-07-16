@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useChessTimerStore } from '@/Stores/chessTimerStore.js'
 import { TIME_CONTROL_TYPES, TIMER_STATES, TIMER_EVENTS } from '@/Stores/chessTimerStore.js'
 import {PLAYER_COLORS} from "@/Utils/chessConstants.js";
+import { useSounds } from "@/Composables/useSounds.js";
 
 const props = defineProps({
     player: {
@@ -53,10 +54,24 @@ const emit = defineEmits([
 // Store
 const timerStore = useChessTimerStore()
 
+const sounds = useSounds()
+
 // Local State
 const isBlinking = ref(false)
 const warningLevel = ref('normal')
 const blinkInterval = ref(null)
+
+// In der Timer-Store State-Sektion hinzufügen:
+const soundFlags = ref({
+    white: {
+        tenSecondsPlayed: false,
+        lowTimePlayed: false
+    },
+    black: {
+        tenSecondsPlayed: false,
+        lowTimePlayed: false
+    }
+})
 
 // ===== COMPUTED =====
 
@@ -272,6 +287,10 @@ const handleTimerEvent = (event, data) => {
             break
         case TIMER_EVENTS.CRITICAL_TIME:
             if (data.player === props.player && props.showWarnings) {
+                if (data.playTenSecondsSound && !soundFlags.value[props.player].tenSecondsPlayed) {
+                    sounds.playTimerSound('tenSeconds')
+                    soundFlags.value[props.player].tenSecondsPlayed = true
+                }
                 emit('timerWarning', { level: 'critical', ...data })
             }
             break

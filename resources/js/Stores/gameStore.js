@@ -23,11 +23,13 @@ import {cloneBoard, getPieceColor, indicesToSquare, squareToIndices} from '@/Uti
 import { useSanGenerator } from "@/Composables/useSANGenerator.js"
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { useChessTimerStore } from "@/Stores/chessTimerStore.js"
+import { useSounds } from '@/Composables/useSounds.js'
 
 export const useGameStore = defineStore('game', () => {
     const chessLogic = useChessLogic()
     const configStore = useGameConfigStore()
     const timerStore = useChessTimerStore()
+    const sounds = useSounds()
 
     // ===== STATE =====
     const gameId = ref(null)
@@ -627,6 +629,7 @@ export const useGameStore = defineStore('game', () => {
         if (timerStore.timerState === 'expired') {
             const expiredPlayer = timerStore.activePlayer
             gameStatus.value = expiredPlayer === 'white' ? GAME_STATUS.BLACK_WINS_TIME : GAME_STATUS.WHITE_WINS_TIME
+            sounds.playGameOverSound(gameStatus.value, currentPlayer.value)
             console.log(`🕐 Zeit abgelaufen! ${expiredPlayer === 'white' ? 'Schwarz' : 'Weiß'} gewinnt`)
             return
         }
@@ -634,6 +637,7 @@ export const useGameStore = defineStore('game', () => {
         const checkmateResult = checkForCheckmate()
         if (checkmateResult) {
             timerStore.stopTimer()
+            sounds.playGameOverSound('CHECKMATE', currentPlayer.value)
             console.log('🎯 Schachmatt erkannt, Spiel beendet')
             return
         }
@@ -641,6 +645,7 @@ export const useGameStore = defineStore('game', () => {
         const stalemateResult = checkForStalemate()
         if (stalemateResult) {
             timerStore.stopTimer()
+            sounds.playGameOverSound('STALEMATE', currentPlayer.value)
             console.log('🎯 Patt erkannt, Spiel beendet')
             return
         }
@@ -649,6 +654,7 @@ export const useGameStore = defineStore('game', () => {
         if (repetitionResult) {
             console.log('🎯 3-fache Stellungswiederholung erkannt, Spiel beendet')
             timerStore.stopTimer()
+            sounds.playGameOverSound('DRAW_REPETITION', currentPlayer.value)
             return
         }
 
@@ -656,6 +662,7 @@ export const useGameStore = defineStore('game', () => {
         if (fiftyMoveResult) {
             timerStore.stopTimer()
             console.log('🎯 50-Züge-Regel erfüllt, Spiel beendet')
+            sounds.playGameOverSound('DRAW_FIFTY_MOVE', currentPlayer.value)
             return
         }
     }
@@ -895,6 +902,7 @@ export const useGameStore = defineStore('game', () => {
             console.log(`⏰ ZEIT ABGELAUFEN! ${expiredPlayer === 'white' ? 'Schwarz' : 'Weiß'} gewinnt durch Zeitüberschreitung`)
 
             timerStore.stopTimer()
+            sounds.playGameOverSound(gameStatus.value, currentPlayer.value)
 
         } catch (error) {
             console.error('Fehler beim Timer-Ablauf:', error)

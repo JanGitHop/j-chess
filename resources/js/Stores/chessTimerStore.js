@@ -490,7 +490,8 @@ export const useChessTimerStore = defineStore('chessTimer', () => {
         if (warningLevel === 'critical') {
             emitEvent(TIMER_EVENTS.CRITICAL_TIME, {
                 player: activePlayer.value,
-                remainingTime: currentPlayerTime.value
+                remainingTime: currentPlayerTime.value,
+                playTenSecondsSound: true
             })
         } else if (warningLevel === 'low') {
             emitEvent(TIMER_EVENTS.LOW_TIME, {
