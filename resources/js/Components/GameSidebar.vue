@@ -1,5 +1,5 @@
 <script setup>
-import PlayerInfo from '@/Components/PlayerInfo.vue'
+import GameInfo from '@/Components/GameInfo.vue'
 import GameControls from '@/Components/GameControls.vue'
 import MoveHistory from '@/Components/MoveHistory.vue'
 import BoardInfo from '@/Components/BoardInfo.vue'
@@ -66,7 +66,7 @@ defineEmits([
 <template>
     <aside class="game-sidebar" :class="{ 'sidebar--collapsed': collapsed }">
         <!-- Player Info -->
-        <PlayerInfo
+        <GameInfo
             v-if="showPlayerInfo"
             :game-state="gameState"
             :time-control="timeControl"

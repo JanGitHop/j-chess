@@ -9,76 +9,23 @@ const props = defineProps({
         type: Object,
         required: true
     },
-    timeControl: {
-        type: Object,
-        default: () => ({ type: 'unlimited' })
-    },
-    playerColor: {
-        type: String,
-        default: 'white',
-        validator: value => ['white', 'black', 'both'].includes(value)
-    },
-    showCapturedPieces: {
-        type: Boolean,
-        default: true
-    },
-    showPlayerRatings: {
-        type: Boolean,
-        default: false
-    },
-    whitePlayer: {
-        type: Object,
-        default: () => ({ name: 'Weiß', rating: null, avatar: null })
-    },
-    blackPlayer: {
-        type: Object,
-        default: () => ({ name: 'Schwarz', rating: null, avatar: null })
-    }
 })
 
-// stores
 const pieceStore = usePieceStore()
 const gameStore = useGameStore()
 
-// Timer State
-const whiteTime = ref(props.timeControl.initialTime || 0)
-const blackTime = ref(props.timeControl.initialTime || 0)
-const timerInterval = ref(null)
-const lastUpdateTime = ref(null)
-
 // ===== COMPUTED PROPERTIES =====
 
-/**
- * Ist Timer aktiv?
- */
-const isTimerActive = computed(() => {
-    return props.timeControl.type !== 'unlimited' &&
-        props.gameState.isGameActive &&
-        !props.gameState.isPaused
-})
-
-/**
- * Wer ist am Zug?
- */
 const currentPlayerTurn = computed(() => props.gameState.currentPlayer)
 
-/**
- * Spieler-Daten formatiert
- */
 const players = computed(() => ({
     white: {
         ...props.whitePlayer,
         isActive: currentPlayerTurn.value === 'white',
-        time: whiteTime.value,
-        capturedPieces: props.gameState.capturedPieces?.black || [],
-        materialAdvantage: calculateMaterialAdvantage('white')
     },
     black: {
         ...props.blackPlayer,
         isActive: currentPlayerTurn.value === 'black',
-        time: blackTime.value,
-        capturedPieces: props.gameState.capturedPieces?.white || [],
-        materialAdvantage: calculateMaterialAdvantage('black')
     }
 }))
 
@@ -110,289 +57,10 @@ const threefoldInfo = computed(() => {
         isNear: currentCount >= 2
     }
 })
-
-/**
- * Zeit formatiert anzeigen
- */
-const formatTime = (timeInSeconds) => {
-    if (timeInSeconds === null || timeInSeconds === undefined) return '--:--'
-
-    const hours = Math.floor(timeInSeconds / 3600)
-    const minutes = Math.floor((timeInSeconds % 3600) / 60)
-    const seconds = timeInSeconds % 60
-
-    if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-    } else {
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`
-    }
-}
-
-/**
- * Zeit-Stil basierend auf verbleibendem Timer
- */
-const getTimeStyle = (timeInSeconds) => {
-    if (!isTimerActive.value || timeInSeconds === null) {
-        return { color: '#4a5568' }
-    }
-
-    if (timeInSeconds < 30) {
-        return {
-            color: '#e53e3e',
-            fontWeight: 'bold',
-            animation: 'time-critical 1s ease-in-out infinite'
-        }
-    } else if (timeInSeconds < 60) {
-        return {
-            color: '#dd6b20',
-            fontWeight: 'bold'
-        }
-    } else if (timeInSeconds < 300) {
-        return { color: '#d69e2e' }
-    } else {
-        return { color: '#38a169' }
-    }
-}
-
-const calculateMaterialAdvantage = (color) => {
-    if (!props.gameState.capturedPieces) return 0
-
-    const pieceValues = {
-        'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0
-    }
-
-    const oppColor = color === 'white' ? 'black' : 'white'
-    const myCaptured = props.gameState.capturedPieces[oppColor] || []
-    const oppCaptured = props.gameState.capturedPieces[color] || []
-
-    const myValue = myCaptured.reduce((sum, piece) => {
-        const pieceType = typeof piece === 'string' ? piece : piece.type
-        return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
-    }, 0)
-
-    const oppValue = oppCaptured.reduce((sum, piece) => {
-        const pieceType = typeof piece === 'string' ? piece : piece.type
-        return sum + (pieceValues[pieceType?.toLowerCase()] || 0)
-    }, 0)
-
-    return myValue - oppValue
-}
-
-/**
- * FEN-NOTATION FÜR FIGUR BESTIMMEN
- */
-const getPieceFenNotation = (piece) => {
-    // Falls es schon ein String ist (FEN-Notation)
-    if (typeof piece === 'string') {
-        return piece
-    }
-
-    // Falls es ein Objekt ist { type: 'p', color: 'black' }
-    if (piece && piece.type && piece.color) {
-        const type = piece.type.toLowerCase()
-        return piece.color === 'white' ? type.toUpperCase() : type
-    }
-
-    // NEU: Falls es ein Objekt mit 'notation' Property ist
-    if (piece && piece.notation) {
-        return piece.notation
-    }
-
-    console.warn('Unbekannte Figur-Struktur:', piece)
-    return null
-}
-
-/**
- * SVG-URL FÜR FIGUR ABRUFEN
- */
-const getPieceImageUrl = (piece) => {
-    const fenNotation = getPieceFenNotation(piece)
-    return fenNotation ? pieceStore.getPieceImageUrl(fenNotation) : null
-}
-
-/**
- * FIGUREN-NAME FÜR TOOLTIP
- */
-const getPieceName = (piece) => {
-    const fenNotation = getPieceFenNotation(piece)
-    return fenNotation ? pieceStore.getPieceName(fenNotation) : 'Unbekannt'
-}
-
-/**
- * Check-Indikator Style
- */
-const getPlayerStyle = (color) => {
-    const player = players.value[color]
-    let style = {
-        transition: 'all 300ms ease',
-        border: '2px solid transparent'
-    }
-
-    if (player.isActive && props.gameState.isGameActive) {
-        style.borderColor = '#4299e1'
-        style.backgroundColor = 'rgba(66, 153, 225, 0.05)'
-    }
-
-    if (props.gameState.isInCheck && player.isActive) {
-        style.borderColor = '#e53e3e'
-        style.backgroundColor = 'rgba(229, 62, 62, 0.1)'
-        style.animation = 'check-pulse 1.5s ease-in-out infinite'
-    }
-
-    return style
-}
-
-// ===== TIMER LOGIC =====
-
-/**
- * Timer starten/stoppen
- */
-const startTimer = () => {
-    if (timerInterval.value) return
-
-    lastUpdateTime.value = Date.now()
-
-    timerInterval.value = setInterval(() => {
-        const now = Date.now()
-        const elapsed = Math.floor((now - lastUpdateTime.value) / 1000)
-        lastUpdateTime.value = now
-
-        if (currentPlayerTurn.value === 'white' && whiteTime.value > 0) {
-            whiteTime.value = Math.max(0, whiteTime.value - elapsed)
-            if (whiteTime.value === 0) {
-                handleTimeUp('white')
-            }
-        } else if (currentPlayerTurn.value === 'black' && blackTime.value > 0) {
-            blackTime.value = Math.max(0, blackTime.value - elapsed)
-            if (blackTime.value === 0) {
-                handleTimeUp('black')
-            }
-        }
-    }, 1000)
-}
-
-const stopTimer = () => {
-    if (timerInterval.value) {
-        clearInterval(timerInterval.value)
-        timerInterval.value = null
-    }
-}
-
-/**
- * Zeit abgelaufen
- */
-const handleTimeUp = (color) => {
-    stopTimer()
-    // Event für Zeitablauf emittieren
-    console.log(`Zeit abgelaufen für ${color}`)
-    // TODO: Game Store Event
-}
-
-/**
- * Inkrement bei Zug hinzufügen
- */
-const addIncrement = (color) => {
-    if (!props.timeControl.increment) return
-
-    if (color === 'white') {
-        whiteTime.value += props.timeControl.increment
-    } else {
-        blackTime.value += props.timeControl.increment
-    }
-}
-
-// ===== WATCHERS & LIFECYCLE =====
-
-// Timer bei Spielerzug-Wechsel handhaben
-const watchCurrentPlayer = computed(() => props.gameState.currentPlayer)
-const watchGameActive = computed(() => props.gameState.isGameActive)
-
-// Timer-Management
-onMounted(() => {
-    if (isTimerActive.value) {
-        startTimer()
-    }
-})
-
-onUnmounted(() => {
-    stopTimer()
-})
-
-// Timer bei Spielzustand-Änderungen reagieren
-const updateTimerState = () => {
-    if (isTimerActive.value && props.gameState.isGameActive) {
-        startTimer()
-    } else {
-        stopTimer()
-    }
-}
-
-// Watcher für Spielerwechsel (Inkrement hinzufügen)
-let previousPlayer = ref(currentPlayerTurn.value)
-const handlePlayerChange = () => {
-    if (previousPlayer.value !== currentPlayerTurn.value) {
-        // Inkrement für vorherigen Spieler hinzufügen
-        if (props.timeControl.increment && previousPlayer.value) {
-            addIncrement(previousPlayer.value)
-        }
-        previousPlayer.value = currentPlayerTurn.value
-    }
-}
-
-// Bei Prop-Änderungen Timer aktualisieren
-$: watchCurrentPlayer && handlePlayerChange()
-$: watchGameActive && updateTimerState()
 </script>
 
 <template>
     <div class="modern-player-info">
-        <!-- Schwarz (oben) -->
-        <div class="player-card player-card--black" :class="{
-            'player-card--active': players.black.isActive && gameState.isGameActive,
-            'player-card--check': gameState.isInCheck && players.black.isActive
-        }">
-            <!-- Player Header -->
-            <div class="player-header">
-                <div class="player-avatar player-avatar--black">
-                    <img v-if="players.black.avatar" :src="players.black.avatar" :alt="players.black.name" />
-                    <div v-else class="avatar-fallback">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7V9C15 10.66 13.66 12 12 12S9 10.66 9 9V7L3 7V9C3 11.76 5.24 14 8 14V16C8 17.1 8.9 18 10 18H14C15.1 18 16 17.1 16 16V14C18.76 14 21 11.76 21 9Z"/>
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="player-details">
-                    <div class="player-name">{{ players.black.name }}</div>
-                    <div v-if="showPlayerRatings && players.black.rating" class="player-rating">
-                        {{ players.black.rating }}
-                    </div>
-                </div>
-
-                <div class="player-status">
-                    <div v-if="players.black.isActive && gameState.isGameActive" class="turn-indicator">
-                        <div class="turn-pulse"></div>
-                    </div>
-                    <div v-if="gameState.isInCheck && players.black.isActive" class="check-warning">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M1 21L12 2L23 21H1ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Timer (falls aktiv) -->
-            <div v-if="timeControl.type !== 'unlimited'" class="timer-section">
-                <div class="time-display" :style="getTimeStyle(players.black.time)">
-                    {{ formatTime(players.black.time) }}
-                </div>
-                <div v-if="timeControl.increment" class="increment-badge">
-                    +{{ timeControl.increment }}s
-                </div>
-            </div>
-
-        </div>
-
         <!-- Game Status Center -->
         <div class="status-center">
             <div class="game-meta">
@@ -447,52 +115,6 @@ $: watchGameActive && updateTimerState()
                         <path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/>
                     </svg>
                     <span>{{ fiftyMoveInfo.movesUntil50 }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Weiß (unten) -->
-        <div class="player-card player-card--white" :class="{
-            'player-card--active': players.white.isActive && gameState.isGameActive,
-            'player-card--check': gameState.isInCheck && players.white.isActive
-        }">
-            <!-- Timer (falls aktiv) -->
-            <div v-if="timeControl.type !== 'unlimited'" class="timer-section">
-                <div class="time-display" :style="getTimeStyle(players.white.time)">
-                    {{ formatTime(players.white.time) }}
-                </div>
-                <div v-if="timeControl.increment" class="increment-badge">
-                    +{{ timeControl.increment }}s
-                </div>
-            </div>
-
-            <!-- Player Header -->
-            <div class="player-header">
-                <div class="player-avatar player-avatar--white">
-                    <img v-if="players.white.avatar" :src="players.white.avatar" :alt="players.white.name" />
-                    <div v-else class="avatar-fallback">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7V9C15 10.66 13.66 12 12 12S9 10.66 9 9V7L3 7V9C3 11.76 5.24 14 8 14V16C8 17.1 8.9 18 10 18H14C15.1 18 16 17.1 16 16V14C18.76 14 21 11.76 21 9Z"/>
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="player-details">
-                    <div class="player-name">{{ players.white.name }}</div>
-                    <div v-if="showPlayerRatings && players.white.rating" class="player-rating">
-                        {{ players.white.rating }}
-                    </div>
-                </div>
-
-                <div class="player-status">
-                    <div v-if="players.white.isActive && gameState.isGameActive" class="turn-indicator">
-                        <div class="turn-pulse"></div>
-                    </div>
-                    <div v-if="gameState.isInCheck && players.white.isActive" class="check-warning">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M1 21L12 2L23 21H1ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z"/>
-                        </svg>
-                    </div>
                 </div>
             </div>
         </div>

@@ -6,7 +6,7 @@ import BoardSettings from '@/Components/BoardSettings.vue'
 import GameSidebar from "@/Components/GameSidebar.vue";
 import MoveHistory from '@/Components/MoveHistory.vue'
 import GameControls from '@/Components/GameControls.vue'
-import PlayerInfo from '@/Components/PlayerInfo.vue'
+import GameInfo from '@/Components/GameInfo.vue'
 import CapturedPieces from '@/Components/CapturedPieces.vue'
 import PromotionModal from '@/Components/PromotionModal.vue'
 import BoardInfo from "@/Components/BoardInfo.vue";
@@ -25,6 +25,7 @@ import GameHeader from '@/Components/GameHeader.vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import ChessTimer from "@/Components/ChessTimer.vue";
 import {useChessTimerStore} from "@/Stores/chessTimerStore.js";
+import PlayerCard from "@/Components/PlayerCard.vue";
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 
 // Props (falls über Inertia.js übergeben)
@@ -181,6 +182,31 @@ const bottomCapturedPieces = computed(() => {
         ? capturedPiecesData.value.white  // Schwarz unten wenn Board normal
         : capturedPiecesData.value.black  // Weiß unten wenn Board gedreht
 })
+
+const whitePlayerData = computed(() => ({
+    name: gameStore.whitePlayer || 'Weiß',
+    color: 'white',
+    rating: 1200, // optional
+    avatar: null, // optional
+    isActive: gameState.value.currentPlayer === 'white'
+}))
+
+const blackPlayerData = computed(() => ({
+    name: gameStore.blackPlayer || 'Schwarz',
+    color: 'black',
+    rating: 1200, // optional
+    avatar: null, // optional
+    isActive: gameState.value.currentPlayer === 'black'
+}))
+
+const topPlayerInfo = computed(() => {
+    return boardOrientation.value === 'white' ? blackPlayerData.value : whitePlayerData.value
+})
+
+const bottomPlayerInfo = computed(() => {
+    return boardOrientation.value === 'white' ? whitePlayerData.value : blackPlayerData.value
+})
+
 
 const topPlayerColor = computed(() => {
     return boardOrientation.value === 'white' ? 'white' : 'black'
@@ -823,6 +849,14 @@ onUnmounted(() => {
                             layout="horizontal"
                             />
                         </div>
+
+                        <div class="middle-element">
+                            <PlayerCard
+                                :game-state="gameState"
+                                :player="topPlayerInfo"
+                            />
+                        </div>
+
                         <div class="right-element">
                             <ChessTimer
                                 :player="bottomPlayerColor"
@@ -860,6 +894,14 @@ onUnmounted(() => {
                         layout="horizontal"
                     />
                         </div>
+
+                        <div class="middle-element">
+                            <PlayerCard
+                                :game-state="gameState"
+                                :player="bottomPlayerInfo"
+                            />
+                        </div>
+
                         <div class="right-element">
                             <ChessTimer
                                 :player="topPlayerColor"
@@ -1152,7 +1194,7 @@ onUnmounted(() => {
 .board-top-row,
 .board-bottom-row {
     display: grid;
-    grid: auto-flow / repeat(2, 1fr);
+    grid: auto-flow / repeat(3, 1fr);
     justify-content: space-between;
     width: 100%;
 }
