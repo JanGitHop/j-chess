@@ -979,14 +979,6 @@ onUnmounted(() => {
     grid-area: header;
 }
 
-.game-main {
-    grid-area: main;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    min-height: 0;
-}
 
 /* Fullscreen Mode */
 .game-layout--fullscreen {
@@ -1174,14 +1166,12 @@ onUnmounted(() => {
 }
 
 /* Main Content */
+
 .game-main {
-    flex: 1;
+    grid-area: main;
     display: flex;
-    gap: 2rem;
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
+    padding: 1rem;
+    min-height: 0;
     align-items: flex-start;
 }
 
@@ -1216,6 +1206,7 @@ onUnmounted(() => {
 .board-container {
     flex-shrink: 0;
 }
+
 .game-layout {
     display: grid;
     grid-template-areas:
@@ -1223,7 +1214,7 @@ onUnmounted(() => {
         "main sidebar";
     grid-template-rows: auto 1fr;
     grid-template-columns: 1fr 300px;
-    min-height: 100vh;
+    max-height: 100vh;
     background: linear-gradient(135deg, #9f9f9f 0%, #444444 100%);
 }
 .game-sidebar {
@@ -1232,6 +1223,7 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 1.5rem;
     transition: all 300ms ease;
+    margin-left: 1rem;
 }
 
 .sidebar--collapsed {

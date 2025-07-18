@@ -426,6 +426,7 @@ onUnmounted(() => {
     min-width: 120px;
     position: relative;
     user-select: none;
+    max-height: 45px;
 }
 
 .chess-timer--right-aligned {

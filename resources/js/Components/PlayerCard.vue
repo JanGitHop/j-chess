@@ -89,7 +89,7 @@ const playerData = computed(() => ({
     background: rgba(255, 255, 255, 0.02);
     border: 2px solid transparent;
     transition: all 300ms ease;
-    min-height: 60px;
+    max-height: 45px;
 }
 
 /* Farbvarianten */

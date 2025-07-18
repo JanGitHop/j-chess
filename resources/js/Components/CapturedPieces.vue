@@ -169,7 +169,7 @@ const showAdvantage = computed(() => props.materialAdvantage > 0)
     border-radius: 0.5rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(0, 0, 0, 0.1);
-    min-height: 40px;
+    max-height: 45px;
     transition: all 200ms ease;
 }
 
