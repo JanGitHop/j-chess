@@ -1,11 +1,3 @@
-## Warum Inertia.js perfekt für dein Schachprojekt ist
-### Vorteile:
-- **Monolithische Einfachheit** mit SPA-Feeling
-- **Nahtlose Vue-Integration** in Laravel
-- **Einfaches Routing** über Laravel
-- **Server-Side Rendering** möglich
-- **Weniger API-Boilerplate**
-
 ## Detaillierte Projektstruktur
 ``` 
 Schach/
@@ -118,12 +110,12 @@ class LeelaEngine implements ChessEngineInterface { ... }
 ### Phase 1: Grundgerüst
 1. Laravel + Inertia.js Setup
 2. Benutzerregistrierung/-login
-3. Basis-Schachbrett (Vue-Komponente)
-4. Einfache Spiellogik
+3. Basis-Schachbrett (Vue-Komponente) ✅
+4. Spiellogik ✅
 
 ### Phase 2: Core Features
 1. PvP-Spiele (lokal)
-2. Grundlegende Schachregeln
+2. Grundlegende Schachregeln ✅
 3. Spielhistorie
 4. Profil-Management
 
@@ -138,12 +130,5 @@ class LeelaEngine implements ChessEngineInterface { ... }
 2. Engine-Management-System
 3. Verschiedene Schwierigkeitsgrade
 4. Analyse-Features
-
-## Erste Schritte
-Sollen wir mit dem Setup beginnen? Ich würde vorschlagen:
-1. **Laravel-Projekt mit Inertia.js erstellen**
-2. **Basis-Authentication einrichten**
-3. **Erste Vue-Komponente für das Schachbrett**
-4. **Datenbank-Migrations definieren**
 
 ##### Sail Install
