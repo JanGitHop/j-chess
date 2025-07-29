@@ -532,7 +532,6 @@ const handleExportGame = () => {
 
 <!-- Style bleibt komplett unverändert -->
 <style scoped>
-/* ... [Alle bestehenden Styles unverändert] ... */
 .game-header {
     background: rgba(248, 250, 252, 0.95);
     border-bottom: 1px solid #e2e8f0;
