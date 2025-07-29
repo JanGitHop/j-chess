@@ -1,7 +1,7 @@
 <script setup>
 import Navigation from '../Components/Navigation.vue'
 
-console.log('Welcome loaded - mit Navigation');
+console.log('Dashboard loaded');
 </script>
 
 <template>
