@@ -13,7 +13,7 @@ console.log('Dashboard loaded');
         <main class="container mx-auto py-16 px-4">
             <div class="text-center">
                 <h1 class="text-6xl font-bold text-gray-900 mb-4">♛ J-Chess</h1>
-                <p class="text-xl text-gray-600 mb-8">Jan's Online-Schachspiel mit Laravel & Vue</p>
+                <p class="text-xl text-gray-600 mb-8">Jan's Schach</p>
 
                 <div class="space-x-4">
                     <a href="/chess" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">

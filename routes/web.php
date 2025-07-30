@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -38,25 +39,3 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Game routes will go here in Phase 2
 });
-
-// TEMPORÄR - Login ohne Guest-Middleware zum Testen
-Route::get('/test-login', [AuthController::class, 'showLogin'])->name('test.login');
-
-// TEMPORÄR - Debug Route hinzufügen
-Route::get('/debug-middleware', function () {
-    return response()->json([
-        'auth_check' => Auth::check(),
-        'auth_user' => Auth::user(),
-        'session_data' => session()->all(),
-        'request_user' => request()->user(),
-        'middleware_should_allow_guest' => !Auth::check()
-    ]);
-});
-
-// NOTFALL LOGOUT - ganz oben hinzufügen
-Route::get('/force-logout', function () {
-    Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect('/')->with('success', 'Ausgeloggt!');
-})->name('force.logout');
