@@ -1,27 +1,30 @@
 <script setup>
 import Navigation from '../Components/Navigation.vue'
+import { Link } from '@inertiajs/vue3'
 
 console.log('Dashboard loaded');
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100">
-        <!-- Navigation einbinden -->
+    <div class="chess-page">
+        <!-- Chess Background -->
+        <div class="chess-background">
+            <div class="chess-pattern"></div>
+        </div>
+
+        <!-- Navigation -->
         <Navigation />
 
         <!-- Hero Section -->
         <main class="container mx-auto py-16 px-4">
             <div class="text-center">
                 <h1 class="text-6xl font-bold text-gray-900 mb-4">♛ J-Chess</h1>
-                <p class="text-xl text-gray-600 mb-8">Jan's Schach</p>
+                <p class="text-xl text-gray-50 mb-8">Jan's Schach</p>
 
                 <div class="space-x-4">
-                    <a href="/chess" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">
+                    <Link href="/chess" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">
                         Spiel starten
-                    </a>
-                    <a href="/register" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">
-                        Registrieren
-                    </a>
+                    </Link>
                 </div>
             </div>
 

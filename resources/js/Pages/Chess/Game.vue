@@ -793,7 +793,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div>
+    <div class="chess-page">
+        <div class="chess-background">
+            <div class="chess-pattern"></div>
+        </div>
+
         <Head title="J-Chess" />
 
         <div :class="layoutClasses">
@@ -962,7 +966,6 @@ onUnmounted(() => {
     grid-template-rows: auto 1fr;
     grid-template-columns: 1fr 300px;
     min-height: 100vh;
-    background: linear-gradient(135deg, #9f9f9f 0%, #444444 100%);
 }
 
 .game-layout--fullscreen {
@@ -1173,6 +1176,7 @@ onUnmounted(() => {
     padding: 1rem;
     min-height: 0;
     align-items: flex-start;
+    z-index: 10;
 }
 
 .board-area {
@@ -1207,16 +1211,6 @@ onUnmounted(() => {
     flex-shrink: 0;
 }
 
-.game-layout {
-    display: grid;
-    grid-template-areas:
-        "header header"
-        "main sidebar";
-    grid-template-rows: auto 1fr;
-    grid-template-columns: 1fr 300px;
-    max-height: 100vh;
-    background: linear-gradient(135deg, #9f9f9f 0%, #444444 100%);
-}
 .game-sidebar {
     width: 350px;
     display: flex;

@@ -25,7 +25,12 @@ const submit = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100">
+    <div class="chess-page">
+        <!-- Chess Background -->
+        <div class="chess-background">
+            <div class="chess-pattern"></div>
+        </div>
+
         <!-- Navigation einbinden -->
         <Navigation />
 

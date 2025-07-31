@@ -533,18 +533,23 @@ const handleExportGame = () => {
 <!-- Style bleibt komplett unverändert -->
 <style scoped>
 .game-header {
-    background: rgba(248, 250, 252, 0.95);
-    border-bottom: 1px solid #e2e8f0;
+    grid-area: header;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
+    padding: 1rem 2rem;
     position: relative;
-    z-index: 100;
+    z-index: 30;
+    /* NEU: Grid-Area vollständig nutzen */
+    justify-self: stretch; /* Volle Grid-Breite nutzen */
 }
 
 .header-content {
     display: flex;
     align-items: center;
-    padding: 1rem 1.5rem;
-    max-width: 100%;
+    padding: 1rem 1rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Brand */
@@ -565,7 +570,7 @@ const handleExportGame = () => {
     display: flex;
     align-items: center;
     gap: 1rem;
-    flex: 1;
+    flex: 0 0 auto;
 }
 
 .nav-item {
@@ -967,6 +972,10 @@ const handleExportGame = () => {
         padding: 0.75rem 1rem;
     }
 
+    .header-actions {
+        margin-left: 0;
+    }
+
     .header-nav {
         gap: 0.75rem;
     }
@@ -990,6 +999,10 @@ const handleExportGame = () => {
         padding: 0.5rem 0.75rem;
         flex-wrap: wrap;
         gap: 0.5rem;
+    }
+
+    .header-actions {
+        margin-left: 0;
     }
 
     .header-brand {
