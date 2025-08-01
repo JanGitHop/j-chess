@@ -11,7 +11,9 @@ import CapturedPieces from '@/Components/CapturedPieces.vue'
 import PromotionModal from '@/Components/PromotionModal.vue'
 import BoardInfo from "@/Components/BoardInfo.vue";
 import { useBoardStore } from '@/Stores/boardStore'
+import { useChessTimerStore } from "@/Stores/chessTimerStore.js";
 import { useGameStore } from '@/Stores/gameStore'
+import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { usePieceStore } from '@/Stores/pieceStore'
 import { useSounds } from "@/Composables/useSounds.js";
 import {
@@ -22,9 +24,7 @@ import {
     PLAYER_COLORS
 } from '@/Utils/chessConstants.js'
 import GameHeader from '@/Components/GameHeader.vue'
-import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import ChessTimer from "@/Components/ChessTimer.vue";
-import {useChessTimerStore} from "@/Stores/chessTimerStore.js";
 import PlayerCard from "@/Components/PlayerCard.vue";
 // import { useGameEngineStore } from '@/Stores/gameEngineStore'
 

@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import 'tailwindcss/utilities';
 @import './chess-background.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -8,15 +7,105 @@
 @source '../**/*.js';
 @source '../**/*.vue';
 
+/* TailwindCSS v4 @theme directive für Design Tokens */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
     'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Interactive Elements */
+    --color-theme-primary: #3b82f6;
+    --color-theme-primary-hover: #2563eb;
+    --color-theme-success: #22c55e;
+    --color-theme-warning: #fbbf24;
+    --color-theme-error: #ef4444;
 }
 
-/* Custom utilities für Vue-Komponenten */
-@layer utilities {
-    .chess-piece {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+/* KORREKT - CSS Variables für Dark Mode Toggle */
+:root {
+    /* Light Theme als Default */
+    --color-background: #f3f4f6;
+    --color-surface: #ffffff;
+    --color-surface-secondary: #f9fafb;
+    --color-text-primary: #111827;
+    --color-text-secondary: #4b5563;
+    --color-text-muted: #9ca3af;
+    --color-border: #e5e7eb;
+    --color-border-light: #f3f4f6;
+
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-success: #22c55e;
+    --color-warning: #fbbf24;
+    --color-error: #ef4444;
+}
+
+/* Dark Mode - passt zu themeStore */
+html.dark {
+    --color-background: #292929;
+    --color-surface: #353535;
+    --color-surface-secondary: #111111;
+    --color-text-primary: #f3f4f6;
+    --color-text-secondary: #d1d5db;
+    --color-text-muted: #9ca3af;
+    --color-border: #333333;
+    --color-border-light: #444444;
+}
+
+/* TailwindCSS v4 Custom Utilities - VERKNÜPFT mit CSS-Variablen */
+@utility text-theme-primary {
+    color: var(--color-text-primary);
+}
+
+@utility text-theme-secondary {
+    color: var(--color-text-secondary);
+}
+
+@utility text-theme-muted {
+    color: var(--color-text-muted);
+}
+
+@utility bg-theme-background {
+    background-color: var(--color-background);
+}
+
+@utility bg-theme-surface {
+    background-color: var(--color-surface);
+}
+
+@utility bg-theme-surface-secondary {
+    background-color: var(--color-surface-secondary);
+}
+
+@utility border-theme {
+    border-color: var(--color-border);
+}
+
+@utility border-theme-light {
+    border-color: var(--color-border-light);
+}
+
+@utility theme-page-bg {
+    background-color: var(--color-background);
+    transition: background-color 0.3s ease;
+}
+
+.text-theme-primary:hover {
+    opacity: 0.8;
+}
+
+.bg-theme-surface-secondary:hover {
+    background-color: var(--color-border-light);
+}
+
+/* Dropdown Styles */
+.dropdown-item:hover {
+    background-color: var(--color-surface-secondary);
+}
+
+.dropdown-item-name {
+    color: var(--color-text-primary);
+}
+
+.dropdown-item-desc {
+    color: var(--color-text-secondary);
 }

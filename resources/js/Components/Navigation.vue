@@ -1,6 +1,7 @@
 <script setup>
-import {computed, ref} from 'vue'
+import { computed, ref } from 'vue'
 import { usePage, router } from '@inertiajs/vue3'
+import ThemeSwitcher from '@/Components/ThemeSwitcher.vue'
 
 // Responsive Menu Toggle
 const mobileMenuOpen = ref(false)
@@ -20,104 +21,83 @@ const logout = () => {
 </script>
 
 <template>
-    <nav class="bg-white shadow-lg">
+    <nav class="bg-theme-surface shadow-lg border-b border-theme">
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center py-4">
                 <!-- Logo -->
                 <div class="flex items-center">
-                    <a href="/" class="text-2xl font-bold text-gray-800">
+                    <a href="/" class="text-2xl font-bold text-theme-primary">
                         ♛ J-Chess
                     </a>
                 </div>
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex space-x-6">
-                    <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md transition duration-200">
+                    <a href="/" class="text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md transition">
                         Start
                     </a>
-                    <a href="/chess" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md transition duration-200">
+                    <a href="/chess" class="text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md transition">
                         Spielen
                     </a>
-                    <a href="/leaderboard" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md transition duration-200">
+                    <a href="/leaderboard" class="text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md transition">
                         Rangliste
-                    </a>
-                    <a href="/profile" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md transition duration-200">
-                        Profil
                     </a>
                 </div>
 
-                <!-- Auth Section - Desktop -->
+                <!-- Theme Switcher & Auth -->
                 <div class="hidden md:flex items-center space-x-4">
-                    <!-- Not Logged In -->
+                    <ThemeSwitcher size="sm" />
+
                     <template v-if="!isLoggedIn">
-                        <a href="/login" class="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md transition duration-200">
+                        <a href="/login" class="text-theme-secondary hover:text-theme-primary px-4 py-2 rounded-md transition">
                             Anmelden
                         </a>
-                        <a href="/register" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition duration-200">
+                        <a href="/register" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition">
                             Registrieren
                         </a>
                     </template>
 
-                    <!-- Logged In -->
                     <template v-else>
-                        <button
-                            @click="goToProfile"
-                            class="flex items-center space-x-2 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md transition duration-200"
-                        >
-                            <img
-                                :src="user.avatar || '/images/logo.png'"
-                                :alt="user.name"
-                                class="w-8 h-8 rounded-full border-2 border-gray-200"
-                                @error="$event.target.src = '/images/logo.png'"
-                            />
-                            <span class="font-medium">{{ user.name }}</span>
-                        </button>
-
-                        <form @submit.prevent="logout" class="inline">
-                            <button
-                                type="submit"
-                                class="text-gray-600 hover:text-red-600 px-4 py-2 rounded-md transition duration-200 font-medium"
-                            >
+                        <div class="flex items-center space-x-3">
+                            <span class="text-theme-primary font-medium">{{ user.name }}</span>
+                            <button @click="logout" class="text-theme-secondary hover:text-red-500 transition">
                                 Abmelden
                             </button>
-                        </form>
+                        </div>
                     </template>
                 </div>
 
-                <!-- Mobile menu button -->
-                <div class="md:hidden">
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-600 hover:text-gray-900">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                </div>
+                <!-- Mobile Menu Button -->
+                <button
+                    @click="mobileMenuOpen = !mobileMenuOpen"
+                    class="md:hidden text-theme-secondary hover:text-theme-primary"
+                >
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Mobile Navigation -->
-            <div v-show="mobileMenuOpen" class="md:hidden">
-                <div class="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200">
-                    <a href="/" class="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">Start</a>
-                    <a href="/chess" class="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">Spielen</a>
-                    <a href="/leaderboard" class="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">Rangliste</a>
-                    <a href="/profile" class="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">Profil</a>
-                    <a href="/login" class="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">Anmelden</a>
+            <div v-show="mobileMenuOpen" class="md:hidden border-t border-theme pt-4 pb-3 space-y-2">
+                <a href="/" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Start</a>
+                <a href="/chess" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Spielen</a>
+                <a href="/leaderboard" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Rangliste</a>
+
+                <div class="px-3 py-2">
+                    <ThemeSwitcher size="sm" />
+                </div>
+
+                <div v-if="!isLoggedIn" class="border-t border-theme pt-2 space-y-2">
+                    <a href="/login" class="block text-theme-secondary hover:text-theme-primary px-3 py-2">Anmelden</a>
                     <a href="/register" class="block bg-blue-600 text-white px-3 py-2 rounded-md">Registrieren</a>
+                </div>
 
-                    <!-- Conditional Auth/User Section -->
-                    <div v-if="!isLoggedIn" class="border-t border-gray-200 pt-2">
-                        <a href="/login" class="block text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">Anmelden</a>
-                        <a href="/register" class="block bg-blue-600 text-white px-3 py-2 rounded-md">Registrieren</a>
-                    </div>
-
-                    <div v-else class="border-t border-gray-200 pt-2">
-                        <button @click="goToProfile" class="block w-full text-left text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">
-                            {{ user.name }} - Profil
-                        </button>
-                        <button @click="logout" class="block w-full text-left text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md">
-                            Abmelden
-                        </button>
-                    </div>
+                <div v-else class="border-t border-theme pt-2">
+                    <span class="block text-theme-primary px-3 py-2 font-medium">{{ user.name }}</span>
+                    <button @click="logout" class="block w-full text-left text-theme-secondary hover:text-red-500 px-3 py-2">
+                        Abmelden
+                    </button>
                 </div>
             </div>
         </div>

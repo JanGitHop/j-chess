@@ -210,7 +210,7 @@ const handleExportGame = () => {
 </script>
 
 <template>
-    <header class="game-header">
+    <header class="game-header bg-theme-surface border-b border-theme">
         <div class="header-content">
             <!-- Logo -->
             <div class="flex items-center">
@@ -229,17 +229,17 @@ const handleExportGame = () => {
                         @blur="closeModeDropdownDelayed"
                     >
                         <span class="btn-icon">{{ currentGameMode.icon }}</span>
-                        <span class="btn-text">{{ currentGameMode.name }}</span>
+                        <span class="btn-text text-theme-secondary">{{ currentGameMode.name }}</span>
                         <svg class="dropdown-icon" viewBox="0 0 20 20">
                             <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                         </svg>
                     </button>
 
-                    <div v-if="showModeDropdown" class="dropdown-menu">
+                    <div v-if="showModeDropdown" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
                         <button
                             v-for="mode in availableGameModes"
                             :key="mode.id"
-                            class="dropdown-item"
+                            class="dropdown-item hover:bg-theme-surface-secondary"
                             :class="{
                                 'dropdown-item--active': mode.id === configStore.gameMode,
                                 'dropdown-item--disabled': mode.disabled
@@ -248,8 +248,8 @@ const handleExportGame = () => {
                         >
                             <span class="dropdown-item-icon">{{ mode.icon }}</span>
                             <div class="dropdown-item-content">
-                                <span class="dropdown-item-name">{{ mode.name }}</span>
-                                <span class="dropdown-item-desc">{{ mode.description }}</span>
+                                <span class="dropdown-item-name text-theme-primary">{{ mode.name }}</span>
+                                <span class="dropdown-item-desc text-theme-secondary">{{ mode.description }}</span>
                             </div>
                         </button>
                     </div>
@@ -263,17 +263,17 @@ const handleExportGame = () => {
                         @blur="closeThemeDropdownDelayed"
                     >
                         <span class="btn-icon">🎨</span>
-                        <span class="btn-text">{{ currentTheme.name }}</span>
+                        <span class="btn-text text-theme-secondary">{{ currentTheme.name }}</span>
                         <svg class="dropdown-icon" viewBox="0 0 20 20">
                             <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                         </svg>
                     </button>
 
-                    <div v-if="showThemeDropdown" class="dropdown-menu dropdown-menu--wide">
+                    <div v-if="showThemeDropdown" class="dropdown-menu dropdown-menu--wide bg-theme-surface border border-theme shadow-lg">
                         <button
                             v-for="theme in availableThemes"
                             :key="theme.key"
-                            class="dropdown-item theme-item"
+                            class="dropdown-item theme-item hover:bg-theme-surface-secondary"
                             :class="{ 'dropdown-item--active': theme.key === boardStore.currentThemeKey }"
                             @click="selectTheme(theme.key)"
                         >
@@ -282,8 +282,8 @@ const handleExportGame = () => {
                                 <div class="theme-square theme-square--dark" :style="{ backgroundColor: theme.preview.dark }"></div>
                             </div>
                             <div class="dropdown-item-content">
-                                <span class="dropdown-item-name">{{ theme.name }}</span>
-                                <span class="dropdown-item-desc">{{ theme.hasTexture ? 'Mit Textur' : 'Einfarbig' }}</span>
+                                <span class="dropdown-item-name text-theme-primary">{{ theme.name }}</span>
+                                <span class="dropdown-item-desc text-theme-secondary">{{ theme.hasTexture ? 'Mit Textur' : 'Einfarbig' }}</span>
                             </div>
                         </button>
                     </div>
@@ -298,13 +298,13 @@ const handleExportGame = () => {
                         @blur="closeAudioDropdownDelayed"
                     >
                         <span class="btn-icon">{{ isSoundEnabled ? '🔊' : '🔇' }}</span>
-                        <span class="btn-text">Audio</span>
+                        <span class="btn-text text-theme-secondary">Audio</span>
                         <svg class="dropdown-icon" viewBox="0 0 20 20">
                             <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                         </svg>
                     </button>
 
-                    <div v-if="showAudioDropdown" class="dropdown-menu">
+                    <div v-if="showAudioDropdown" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
                         <div class="audio-controls">
                             <div class="audio-control-item">
                                 <label class="toggle-control">
@@ -314,13 +314,13 @@ const handleExportGame = () => {
                                         @change="handleToggleSound"
                                     />
                                     <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Sound aktiviert</span>
+                                    <span class="toggle-label text-theme-primary">Sound aktiviert</span>
                                 </label>
                             </div>
 
                             <div class="audio-control-item" v-if="isSoundEnabled">
                                 <label class="volume-control">
-                                    <span class="volume-label">Lautstärke</span>
+                                    <span class="volume-label text-theme-primary">Lautstärke</span>
                                     <input
                                         type="range"
                                         min="0"
@@ -330,12 +330,12 @@ const handleExportGame = () => {
                                         @input="handleVolumeChange"
                                         class="volume-slider"
                                     />
-                                    <span class="volume-value">{{ Math.round(currentVolume * 100) }}%</span>
+                                    <span class="volume-value text-theme-secondary">{{ Math.round(currentVolume * 100) }}%</span>
                                 </label>
                             </div>
 
                             <div class="audio-control-item" v-if="isSoundEnabled">
-                                <button class="test-sound-btn" @click="handleTestSound">
+                                <button class="test-sound-btn bg-theme-surface-secondary hover:bg-theme-surface text-theme-primary border border-theme">
                                     🎵 Sound testen
                                 </button>
                             </div>
@@ -351,15 +351,15 @@ const handleExportGame = () => {
                         @blur="closeSettingsDropdownDelayed"
                     >
                         <span class="btn-icon">⚙️</span>
-                        <span class="btn-text">Einstellungen</span>
+                        <span class="btn-text text-theme-secondary">Einstellungen</span>
                         <svg class="dropdown-icon" viewBox="0 0 20 20">
                             <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                         </svg>
                     </button>
 
-                    <div v-if="showSettingsDropdown" class="dropdown-menu">
+                    <div v-if="showSettingsDropdown" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
                         <div class="settings-section">
-                            <h4 class="settings-title">Brett-Einstellungen</h4>
+                            <h4 class="settings-title text-theme-primary">Brett-Einstellungen</h4>
 
                             <label class="toggle-control">
                                 <input
@@ -368,7 +368,7 @@ const handleExportGame = () => {
                                     @change="toggleCoordinates"
                                 />
                                 <span class="toggle-slider"></span>
-                                <span class="toggle-label">Koordinaten anzeigen</span>
+                                <span class="toggle-label text-theme-primary">Koordinaten anzeigen</span>
                             </label>
 
                             <label class="toggle-control">
@@ -378,7 +378,7 @@ const handleExportGame = () => {
                                     @change="toggleLegalMoves"
                                 />
                                 <span class="toggle-slider"></span>
-                                <span class="toggle-label">Legale Züge anzeigen</span>
+                                <span class="toggle-label text-theme-primary">Legale Züge anzeigen</span>
                             </label>
 
                             <label class="toggle-control">
@@ -388,7 +388,7 @@ const handleExportGame = () => {
                                     @change="toggleLastMoveHighlight"
                                 />
                                 <span class="toggle-slider"></span>
-                                <span class="toggle-label">Letzten Zug hervorheben</span>
+                                <span class="toggle-label text-theme-primary">Letzten Zug hervorheben</span>
                             </label>
 
                             <label class="toggle-control">
@@ -398,12 +398,12 @@ const handleExportGame = () => {
                                     @change="toggleAnimations"
                                 />
                                 <span class="toggle-slider"></span>
-                                <span class="toggle-label">Animationen</span>
+                                <span class="toggle-label text-theme-primary">Animationen</span>
                             </label>
                         </div>
 
                         <div class="settings-section">
-                            <h4 class="settings-title">Sidebar-Einstellungen</h4>
+                            <h4 class="settings-title text-theme-primary">Sidebar-Einstellungen</h4>
 
                             <label class="toggle-control">
                                 <input
@@ -412,17 +412,17 @@ const handleExportGame = () => {
                                     @change="toggleBoardInfo"
                                 />
                                 <span class="toggle-slider"></span>
-                                <span class="toggle-label">Board-Info anzeigen</span>
+                                <span class="toggle-label text-theme-primary">Board-Info anzeigen</span>
                             </label>
                         </div>
 
                         <div class="settings-section">
-                            <h4 class="settings-title">Brett-Größe</h4>
+                            <h4 class="settings-title text-theme-primary">Brett-Größe</h4>
                             <div class="size-options">
                                 <button
                                     v-for="size in availableBoardSizes"
                                     :key="size.key"
-                                    class="size-option"
+                                    class="size-option bg-theme-surface-secondary hover:bg-theme-surface text-theme-primary border border-theme"
                                     :class="{ 'size-option--active': size.key === boardStore.settings.boardSizeMode }"
                                     @click="selectBoardSize(size.key)"
                                 >
@@ -437,7 +437,7 @@ const handleExportGame = () => {
                 <div class="nav-item">
                     <button class="nav-btn control-btn" @click="handleFlipBoard" title="Brett drehen">
                         <span class="btn-icon">🔄</span>
-                        <span class="btn-text">Drehen</span>
+                        <span class="btn-text text-theme-secondary">Drehen</span>
                     </button>
                 </div>
 
@@ -450,7 +450,7 @@ const handleExportGame = () => {
                             :disabled="!configStore.gameModeSettings.allowAutoReverse"
                         />
                         <span class="toggle-slider"></span>
-                        <span class="toggle-label">Auto-Reverse</span>
+                        <span class="text-theme-secondary">Auto-Reverse</span>
                     </label>
                 </div>
 
@@ -462,20 +462,20 @@ const handleExportGame = () => {
                         @blur="closeGameMenuDelayed"
                     >
                         <span class="btn-icon">⚡</span>
-                        <span class="btn-text">Spiel</span>
+                        <span class="btn-text text-theme-secondary">Spiel</span>
                         <svg class="dropdown-icon" viewBox="0 0 20 20">
                             <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                         </svg>
                     </button>
 
-                    <div v-if="showGameMenu" class="dropdown-menu">
-                        <button class="dropdown-item" @click="handleNewGame">
+                    <div v-if="showGameMenu" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
+                        <button class="dropdown-item hover:bg-theme-surface-secondary" @click="handleNewGame">
                             <span class="dropdown-item-icon">🆕</span>
-                            <span class="dropdown-item-name">Neues Spiel</span>
+                            <span class="dropdown-item-name text-theme-primary">Neues Spiel</span>
                         </button>
-                        <button class="dropdown-item" @click="handleExportGame">
+                        <button class="dropdown-item hover:bg-theme-surface-secondary" @click="handleExportGame">
                             <span class="dropdown-item-icon">💾</span>
-                            <span class="dropdown-item-name">Spiel exportieren</span>
+                            <span class="dropdown-item-name text-theme-primary">Spiel exportieren</span>
                         </button>
                     </div>
                 </div>
@@ -485,7 +485,7 @@ const handleExportGame = () => {
             <div class="header-actions">
                 <!-- Brett-Orientierung Status -->
                 <div class="status-indicator">
-                    <span class="status-text">
+                    <span class="status-text text-theme-secondary">
                         {{ configStore.boardOrientation === 'white' ? 'Weiß unten' : 'Schwarz unten' }}
                     </span>
                 </div>
@@ -493,7 +493,7 @@ const handleExportGame = () => {
                 <!-- Sidebar Toggle -->
                 <button
                     v-if="showSidebarToggle"
-                    class="action-btn"
+                    class="action-btn hover:bg-theme-surface text-theme-secondary hover:text-theme-primary"
                     @click="emit('toggle-sidebar')"
                     title="Sidebar umschalten"
                 >
@@ -505,7 +505,7 @@ const handleExportGame = () => {
                 <!-- Settings -->
                 <button
                     v-if="showSettings"
-                    class="action-btn"
+                    class="action-btn hover:bg-theme-surface text-theme-secondary hover:text-theme-primary"
                     @click="emit('open-settings')"
                     title="Erweiterte Einstellungen"
                 >
@@ -535,8 +535,6 @@ const handleExportGame = () => {
 <style scoped>
 .game-header {
     grid-area: header;
-    background: rgba(255, 255, 255, 0.95);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
     padding: 0rem 0.1rem;
     position: relative;

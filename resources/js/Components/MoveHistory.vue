@@ -231,7 +231,7 @@ const generatePGN = () => {
     <div class="move-history">
         <!-- Header -->
         <div class="move-history__header">
-            <h3 class="move-history__title">Zughistorie</h3>
+            <h3 class="text-lg font-semibold text-theme-secondary">Zughistorie</h3>
 
             <div class="move-history__controls">
                 <button
@@ -357,10 +357,6 @@ const generatePGN = () => {
 /* Header */
 .move-history__header {
     @apply flex justify-between items-center p-4 border-b border-gray-100;
-}
-
-.move-history__title {
-    @apply text-lg font-semibold text-gray-800;
 }
 
 .move-history__controls {
