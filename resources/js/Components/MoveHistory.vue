@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, nextTick, watch } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useGameStore } from '@/Stores/gameStore.js'
 
 const props = defineProps({
@@ -73,23 +73,14 @@ const formattedMoveHistory = computed(() => {
     return moves
 })
 
-/**
- * Hat das Spiel eine Zughistorie?
- */
 const hasHistory = computed(() => {
     return gameStore.moveHistory && gameStore.moveHistory.length > 0
 })
 
-/**
- * Aktueller Zug-Index (letzter gespielter Zug)
- */
 const currentMoveIndex = computed(() => {
     return gameStore.moveHistory ? gameStore.moveHistory.length - 1 : -1
 })
 
-/**
- * Statistiken über das Spiel
- */
 const gameStats = computed(() => {
     const totalMoves = gameStore.moveHistory?.length || 0
     const totalPairs = Math.ceil(totalMoves / 2)
@@ -106,9 +97,6 @@ const gameStats = computed(() => {
 
 // ===== METHODS =====
 
-/**
- * Zug in der Historie anklicken
- */
 const handleMoveClick = (move, moveIndex) => {
     if (!props.interactive) return
 
@@ -129,17 +117,11 @@ const handleMoveClick = (move, moveIndex) => {
     }
 }
 
-/**
- * Zur aktuellen Position springen
- */
 const jumpToCurrentPosition = () => {
     selectedMoveIndex.value = currentMoveIndex.value
     scrollToMove(currentMoveIndex.value)
 }
 
-/**
- * Zu einem bestimmten Zug scrollen
- */
 const scrollToMove = async (moveIndex) => {
     await nextTick()
 
@@ -154,13 +136,9 @@ const scrollToMove = async (moveIndex) => {
     }
 }
 
-/**
- * Zug-Notation mit Symbolen anreichern
- */
 const formatMoveNotation = (move) => {
     let notation = move.notation || move.san || move.move || '?'
 
-    // Schach/Matt-Symbole
     if (move.isCheck && !notation.includes('+')) {
         notation += '+'
     }
@@ -168,7 +146,6 @@ const formatMoveNotation = (move) => {
         notation = notation.replace('+', '') + '#'
     }
 
-    // Spezielle Züge
     if (move.isCastling) {
         return move.isKingside ? 'O-O' : 'O-O-O'
     }
@@ -176,9 +153,6 @@ const formatMoveNotation = (move) => {
     return notation
 }
 
-/**
- * CSS-Klassen für Zug-Element
- */
 const getMoveClasses = (moveIndex) => {
     return {
         'move-item': true,
@@ -202,9 +176,6 @@ const exportHistory = () => {
     return pgn
 }
 
-/**
- * Einfache PGN-Generierung
- */
 const generatePGN = () => {
     if (!hasHistory.value) return ''
 
@@ -240,7 +211,7 @@ const generatePGN = () => {
                     class="btn btn--small btn--ghost"
                     title="Zur aktuellen Position"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                     </svg>
                 </button>
@@ -251,7 +222,7 @@ const generatePGN = () => {
                     class="btn btn--small btn--ghost"
                     title="PGN exportieren"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
                     </svg>
                 </button>
@@ -280,7 +251,7 @@ const generatePGN = () => {
             :style="{ maxHeight: maxHeight }"
         >
             <div v-if="!hasHistory" class="move-history__empty">
-                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-8 h-8 text-gray-400" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                 </svg>
                 <p class="text-gray-500 text-sm mt-2">Noch keine Züge gespielt</p>
@@ -365,7 +336,7 @@ const generatePGN = () => {
 
 /* Stats */
 .move-history__stats {
-    @apply px-4 py-2 bg-gray-50 border-b border-gray-100 flex gap-4;
+    @apply px-4 py-2 border-b border-gray-100 flex gap-4;
 }
 
 .stats-item {
@@ -373,11 +344,11 @@ const generatePGN = () => {
 }
 
 .stats-label {
-    @apply text-xs text-gray-600;
+    @apply text-xs text-gray-200;
 }
 
 .stats-value {
-    @apply text-xs font-medium text-gray-900;
+    @apply text-xs font-medium text-gray-200;
 }
 
 /* Container */
@@ -403,13 +374,12 @@ const generatePGN = () => {
     min-width: 30px;
 }
 
-/* Move Items */
 .move-item {
-    @apply px-2 py-1 rounded text-sm transition-colors duration-150;
+    @apply px-2 py-1 rounded text-sm transition-colors duration-150 text-gray-200;
 }
 
 .move-item--interactive {
-    @apply cursor-pointer hover:bg-gray-100;
+    @apply cursor-pointer text-gray-200 hover:bg-gray-100;
 }
 
 .move-item--selected {
@@ -417,11 +387,11 @@ const generatePGN = () => {
 }
 
 .move-item--current {
-    @apply bg-green-100 text-green-800 font-medium;
+    @apply bg-green-100 text-gray-800 font-medium;
 }
 
 .move-item--interactive:hover {
-    @apply bg-gray-100;
+    @apply bg-gray-100 text-gray-800;
 }
 
 .move-item--selected:hover {
@@ -440,7 +410,6 @@ const generatePGN = () => {
     @apply text-xs text-gray-500 ml-1;
 }
 
-/* Footer */
 .move-history__footer {
     @apply p-3 border-t border-gray-100 bg-gray-50;
 }
@@ -467,7 +436,7 @@ const generatePGN = () => {
 }
 
 .btn--ghost {
-    @apply text-gray-600 hover:text-gray-800 hover:bg-gray-100;
+    @apply text-gray-200 hover:text-gray-800 hover:bg-gray-100;
 }
 
 /* Responsive */

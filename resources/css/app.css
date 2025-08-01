@@ -20,7 +20,6 @@
     --color-theme-error: #ef4444;
 }
 
-/* KORREKT - CSS Variables für Dark Mode Toggle */
 :root {
     /* Light Theme als Default */
     --color-background: #f3f4f6;
@@ -39,7 +38,6 @@
     --color-error: #ef4444;
 }
 
-/* Dark Mode - passt zu themeStore */
 html.dark {
     --color-background: #292929;
     --color-surface: #353535;
@@ -51,7 +49,6 @@ html.dark {
     --color-border-light: #444444;
 }
 
-/* TailwindCSS v4 Custom Utilities - VERKNÜPFT mit CSS-Variablen */
 @utility text-theme-primary {
     color: var(--color-text-primary);
 }
@@ -97,7 +94,6 @@ html.dark {
     background-color: var(--color-border-light);
 }
 
-/* Dropdown Styles */
 .dropdown-item:hover {
     background-color: var(--color-surface-secondary);
 }
