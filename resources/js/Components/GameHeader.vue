@@ -212,9 +212,11 @@ const handleExportGame = () => {
 <template>
     <header class="game-header">
         <div class="header-content">
-            <!-- Logo/Titel -->
-            <div class="header-brand">
-                <h1 class="game-title">{{ gameTitle }}</h1>
+            <!-- Logo -->
+            <div class="flex items-center">
+                <a href="/" class="font-bold mr-5 flex items-center gap-2">
+                    <img src="images/logo.png" alt="J-Chess Logo" class="w-20 h-20" />
+                </a>
             </div>
 
             <!-- Hauptmenü -->
@@ -530,24 +532,22 @@ const handleExportGame = () => {
     />
 </template>
 
-<!-- Style bleibt komplett unverändert -->
 <style scoped>
 .game-header {
     grid-area: header;
     background: rgba(255, 255, 255, 0.95);
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
-    padding: 1rem 2rem;
+    padding: 0rem 0.1rem;
     position: relative;
     z-index: 30;
-    /* NEU: Grid-Area vollständig nutzen */
-    justify-self: stretch; /* Volle Grid-Breite nutzen */
+    justify-self: stretch;
 }
 
 .header-content {
     display: flex;
     align-items: center;
-    padding: 1rem 1rem;
+    padding: 0;
     width: 100%;
     box-sizing: border-box;
 }
