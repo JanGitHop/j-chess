@@ -540,6 +540,10 @@ const handleExportGame = () => {
     position: relative;
     z-index: 30;
     justify-self: stretch;
+    width: 100%;
+    min-width: 1300px;
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 
 .header-content {
@@ -548,6 +552,8 @@ const handleExportGame = () => {
     padding: 0;
     width: 100%;
     box-sizing: border-box;
+    justify-content: space-between;
+    min-width: 0;
 }
 
 /* Brand */
@@ -569,6 +575,15 @@ const handleExportGame = () => {
     align-items: center;
     gap: 1rem;
     flex: 0 0 auto;
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+    padding-right: 0.5rem;
 }
 
 .nav-item {
@@ -907,14 +922,6 @@ const handleExportGame = () => {
     color: #374151;
     font-weight: 500;
     white-space: nowrap;
-}
-
-/* Header Actions */
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-left: auto;
 }
 
 .status-indicator {
