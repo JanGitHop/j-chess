@@ -540,6 +540,10 @@ const handleExportGame = () => {
     position: relative;
     z-index: 30;
     justify-self: stretch;
+    width: 100%;
+    min-width: 1300px;
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 
 .header-content {
@@ -548,6 +552,8 @@ const handleExportGame = () => {
     padding: 0;
     width: 100%;
     box-sizing: border-box;
+    justify-content: space-between;
+    min-width: 0;
 }
 
 /* Brand */
@@ -568,7 +574,19 @@ const handleExportGame = () => {
     display: flex;
     align-items: center;
     gap: 1rem;
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+    padding-right: 1rem;
+    flex-shrink: 0;
 }
 
 .nav-item {
@@ -909,14 +927,6 @@ const handleExportGame = () => {
     white-space: nowrap;
 }
 
-/* Header Actions */
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-left: auto;
-}
-
 .status-indicator {
     padding: 0.375rem 0.75rem;
     background: rgba(0, 0, 0, 0.05);
@@ -971,11 +981,19 @@ const handleExportGame = () => {
     }
 
     .header-actions {
-        margin-left: 0;
+        margin-left: 1rem;
     }
 
     .header-nav {
         gap: 0.75rem;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .header-nav::-webkit-scrollbar {
+        display: none;
     }
 
     .btn-text {
