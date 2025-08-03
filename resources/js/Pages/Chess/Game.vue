@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Head } from '@inertiajs/vue3'
-import ChessBoard from '@/Components/ChessBoard.vue'
+import AnnotatedChessBoard from '@/Components/AnnotatedChessBoard.vue'
 import BoardSettings from '@/Components/BoardSettings.vue'
 import GameSidebar from "@/Components/GameSidebar.vue"
 import MoveHistory from '@/Components/MoveHistory.vue'
@@ -571,7 +571,7 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <ChessBoard
+                    <AnnotatedChessBoard
                         ref="chessBoardRef"
                         :game-mode="props.gameMode"
                         :orientation="boardOrientation"

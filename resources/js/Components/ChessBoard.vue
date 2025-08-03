@@ -3,11 +3,16 @@ import {computed, onMounted, onUnmounted, ref} from 'vue'
 import {useBoardStore} from '@/Stores/boardStore.js'
 import {useGameStore} from '@/Stores/gameStore.js'
 import {usePieceStore} from '@/Stores/pieceStore.js'
+import {useAnnotationStore} from '@/Stores/annotationStore.js'
 import {useChessLogic} from '@/Composables/useChessLogic.js';
 import {useDragAndDrop} from '@/Composables/useDragAndDrop.js'
+import {useAnnotationKeyboard} from '@/Composables/useAnnotationKeyboard.js'
+import {useAnnotationMouse} from '@/Composables/useAnnotationMouse.js'
 import {squareToIndices, isLightSquare, getCSSPattern } from '@/Utils/chessUtils.js'
 import ChessPiece from '@/Components/ChessPiece.vue'
+import AnnotationOverlay from '@/Components/AnnotationOverlay.vue'
 import {GAME_MODES} from "@/Utils/chessConstants.js";
+import {ANNOTATION_COLORS} from "@/Utils/annotationConstants.js";
 
 const props = defineProps({
     sizeMode: {
@@ -59,7 +64,9 @@ const emit = defineEmits([
     'invalidMove',
     'check',
     'checkmate',
-    'stalemate'
+    'stalemate',
+    'dragStart',
+    'dragEnd'
 ])
 
 // Stores
@@ -71,6 +78,15 @@ const chessLogic = useChessLogic()
 
 // Drag & Drop
 const { isDragActive, dragData, findSquareFromElement } = useDragAndDrop()
+
+// Annotation keyboard shortcuts
+const {
+    altKey: annotationAltKey,
+    ctrlKey: annotationCtrlKey,
+    shiftKey: annotationShiftKey,
+    getAnnotationColor,
+    isAnnotationKeyActive
+} = useAnnotationKeyboard()
 
 // Container-Ref für Größenberechnung
 const containerRef = ref(null)
@@ -131,7 +147,7 @@ const boardSize = computed(() => {
 defineExpose({
     boardSize
 })
-console.log(boardSize.value)
+// console.log(boardSize.value)
 const squareSize = computed(() => Math.floor(boardSize.value / 8))
 const coordinateSpace = computed(() => 0)
 const totalSize = computed(() => boardSize.value)
@@ -294,7 +310,32 @@ const isDraggable = (pieceInfo, square) => {
 
 const handleSquareClick = (file, rank) => {
     const square = `${file}${rank}`
-    console.log('Square clicked:', square)
+    // console.log('Square clicked:', square)
+
+    // Check if Alt key is pressed for annotation
+    if (annotationAltKey.value) {
+        event.preventDefault()
+
+        // Determine color based on key combination
+        let color = null
+
+        if (annotationAltKey.value && !annotationCtrlKey.value && !annotationShiftKey.value) {
+            // Alt only = green
+            color = ANNOTATION_COLORS.GREEN
+        } else if (annotationAltKey.value && annotationCtrlKey.value && !annotationShiftKey.value) {
+            // Alt+Ctrl = yellow
+            color = ANNOTATION_COLORS.YELLOW
+        } else if (annotationAltKey.value && !annotationCtrlKey.value && annotationShiftKey.value) {
+            // Alt+Shift = red
+            color = ANNOTATION_COLORS.RED
+        }
+
+        if (color) {
+            // Add or remove field annotation
+            annotationStore.addFieldAnnotation(square, color)
+            return
+        }
+    }
 
     const success = gameStore.selectSquare(square)
 
@@ -324,26 +365,29 @@ const handlePieceClick = (event, pieceInfo, square) => {
 }
 
 const handleDragStart = (event, pieceInfo, square) => {
-    gameStore.draggedPiece = pieceInfo
-    gameStore.draggedFrom = square
-    gameStore.isDragging = true
-
-    gameStore.legalMoves = chessLogic.generateLegalMovesForSquare(
-        square,
-        gameStore.currentBoard,
-        gameStore.currentPlayer,
-        gameStore.gameState
-    )
+    // Update gameStore state properly
+    gameStore.$patch({
+        draggedPiece: pieceInfo,
+        draggedFrom: square,
+        isDragging: true,
+        legalMoves: chessLogic.generateLegalMovesForSquare(
+            square,
+            gameStore.currentBoard,
+            gameStore.currentPlayer,
+            gameStore.gameState
+        )
+    })
 
     emit('dragStart', event, pieceInfo, square)
 }
 
 const handleDragEnd = (event) => {
-    console.log('Drag end')
+    // console.log('Drag end')
 
-    gameStore.draggedPiece = null
-    gameStore.draggedFrom = null
-    gameStore.isDragging = false
+    // Reset drag state
+    gameStore.$patch({
+        isDragging: false
+    })
 
     emit('dragEnd', event)
 }
@@ -352,7 +396,7 @@ const handleDrop = (event, file, rank) => {
     const dropSquare = `${file}${rank}`
 
     if (!gameStore.isDragging || !gameStore.draggedFrom) {
-        console.log('❌ Kein aktiver Drag-Vorgang')
+        // console.log('❌ Kein aktiver Drag-Vorgang')
         return
     }
 
@@ -374,7 +418,7 @@ const handleDrop = (event, file, rank) => {
             needsPromotion: true
         })
     } else {
-        console.log('❌ Zug fehlgeschlagen:', moveResult.error)
+        // console.log('❌ Zug fehlgeschlagen:', moveResult.error)
         emit('invalidMove', {
             from: gameStore.draggedFrom,
             to: dropSquare,
@@ -382,10 +426,13 @@ const handleDrop = (event, file, rank) => {
         })
     }
 
-    gameStore.legalMoves = []
-    gameStore.isDragging = false
-    gameStore.draggedPiece = null
-    gameStore.draggedFrom = null
+    // Reset drag state after move attempt
+    gameStore.$patch({
+        isDragging: false,
+        draggedPiece: null,
+        draggedFrom: null,
+        legalMoves: []
+    })
 }
 
 const handleDragOver = (event) => {
@@ -454,6 +501,7 @@ onUnmounted(() => {
                         v-for="file in files"
                         :key="`${file}${rank}`"
                         class="board-square"
+                        :data-square="`${file}${rank}`"
                         :class="{
                         'square--light': isLightSquare(file, rank),
                         'square--dark': !isLightSquare(file, rank),

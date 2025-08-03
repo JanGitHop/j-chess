@@ -197,3 +197,28 @@ export const getCSSPattern = (patternClass) => {
     }
     return patterns[patternClass] || null
 }
+
+/**
+ * Konvertiert eine Schach-Koordinate in SVG-Koordinaten für Zeichnungen
+ * @param {string} square - z.B. "e4"
+ * @param {string} orientation - 'white' oder 'black'
+ * @returns {object|null} {file, rank} Koordinaten (0-7) oder null
+ */
+export const squareToCoordinates = (square, orientation = 'white') => {
+    const indices = squareToIndices(square)
+    if (!indices) return null
+
+    // Für weiße Orientierung: a8 ist (0,0), h1 ist (7,7)
+    // Für schwarze Orientierung: h1 ist (0,0), a8 ist (7,7)
+    if (orientation === 'white') {
+        return {
+            file: indices.fileIndex,
+            rank: indices.rankIndex
+        }
+    } else {
+        return {
+            file: 7 - indices.fileIndex,
+            rank: 7 - indices.rankIndex
+        }
+    }
+}
