@@ -59,7 +59,7 @@ const logout = () => {
 
                     <template v-else>
                         <div class="flex items-center space-x-3">
-                            <span class="text-theme-primary font-medium">{{ user.name }}</span>
+                            <button @click="goToProfile" class="text-theme-primary font-medium hover:text-theme-primary hover:underline transition">{{ user.name }}</button>
                             <button @click="logout" class="text-theme-secondary hover:text-red-500 transition">
                                 Abmelden
                             </button>
@@ -94,7 +94,7 @@ const logout = () => {
                 </div>
 
                 <div v-else class="border-t border-theme pt-2">
-                    <span class="block text-theme-primary px-3 py-2 font-medium">{{ user.name }}</span>
+                    <button @click="goToProfile" class="block w-full text-left text-theme-primary px-3 py-2 font-medium hover:underline">{{ user.name }}</button>
                     <button @click="logout" class="block w-full text-left text-theme-secondary hover:text-red-500 px-3 py-2">
                         Abmelden
                     </button>
