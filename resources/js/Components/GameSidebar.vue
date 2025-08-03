@@ -113,6 +113,7 @@ defineEmits([
     gap: 1rem;
     padding: 1rem;
     background: transparent;
+    border-left: 1px solid #e2e8f0;
     overflow-y: auto;
     transition: all 300ms ease;
 }

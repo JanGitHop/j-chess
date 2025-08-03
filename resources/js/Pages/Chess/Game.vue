@@ -665,7 +665,7 @@ onUnmounted(() => {
         "header header"
         "main sidebar";
     grid-template-rows: auto 1fr;
-    grid-template-columns: 1fr 350px;
+    grid-template-columns: 1fr 300px;
     min-height: 100vh;
 }
 
@@ -713,8 +713,8 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%;
-    margin: 0;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 .header-left {
@@ -874,7 +874,7 @@ onUnmounted(() => {
 .game-main {
     grid-area: main;
     display: flex;
-    padding: 0.5rem;
+    padding: 1rem;
     min-height: 0;
     align-items: flex-start;
     z-index: 10;
@@ -905,7 +905,7 @@ onUnmounted(() => {
 .captured-pieces-top,
 .captured-pieces-bottom {
     width: 100%;
-    max-width: 600px;
+    max-width: 600px; /* Limited to board width */
 }
 
 .board-container {
@@ -918,6 +918,7 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 1.5rem;
     transition: all 300ms ease;
+    margin-left: 1rem;
 }
 
 .sidebar--collapsed {
