@@ -514,7 +514,7 @@ export function useChessLogic() {
         const attackersOnKing = getAttackingPieces(square, oppositePlayer, board, gameState, { skipCastling: true })
 
         if (attackersOnKing.length > 0) {
-            console.log('🚫 Rochade nicht möglich: König steht im Schach')
+            // console.log('🚫 Rochade nicht möglich: König steht im Schach')
             return moves
         }
 
@@ -588,7 +588,7 @@ export function useChessLogic() {
         for (const square of pathSquares) {
             const attackers = getAttackingPieces(square, attackingPlayer, board, gameState, { skipCastling: true })
             if (attackers.length > 0) {
-                console.log(`🚫 Rochade nicht möglich: Feld ${square} wird von ${attackers.join(', ')} angegriffen`)
+                // console.log(`🚫 Rochade nicht möglich: Feld ${square} wird von ${attackers.join(', ')} angegriffen`)
                 return false
             }
         }
