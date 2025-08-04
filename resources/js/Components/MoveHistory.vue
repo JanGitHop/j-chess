@@ -1,11 +1,11 @@
 <script setup>
-import { computed, ref, nextTick } from 'vue'
+import {computed, ref, nextTick, watch} from 'vue'
 import { useGameStore } from '@/Stores/gameStore.js'
 
 const props = defineProps({
     maxHeight: {
         type: String,
-        default: '400px'
+        default: '450px'
     },
     showMoveNumbers: {
         type: Boolean,
@@ -196,6 +196,16 @@ const generatePGN = () => {
 
     return pgn.trim()
 }
+
+watch(
+    () => gameStore.moveHistory?.length,
+    async (newLength, oldLength) => {
+        if (newLength > oldLength) {
+            await nextTick()
+            jumpToCurrentPosition()
+        }
+    }
+)
 </script>
 
 <template>

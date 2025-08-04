@@ -3,16 +3,16 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import AnnotatedChessBoard from '@/Components/AnnotatedChessBoard.vue'
 import BoardSettings from '@/Components/BoardSettings.vue'
-import GameSidebar from "@/Components/GameSidebar.vue"
+import GameSidebar from '@/Components/GameSidebar.vue'
 import MoveHistory from '@/Components/MoveHistory.vue'
 import GameControls from '@/Components/GameControls.vue'
 import GameInfo from '@/Components/GameInfo.vue'
 import CapturedPieces from '@/Components/CapturedPieces.vue'
 import PromotionModal from '@/Components/PromotionModal.vue'
-import BoardInfo from "@/Components/BoardInfo.vue"
+import BoardInfo from '@/Components/BoardInfo.vue'
 import GameHeader from '@/Components/GameHeader.vue'
-import ChessTimer from "@/Components/ChessTimer.vue"
-import PlayerCard from "@/Components/PlayerCard.vue"
+import ChessTimer from '@/Components/ChessTimer.vue'
+import PlayerCard from '@/Components/PlayerCard.vue'
 
 // Stores
 import { useBoardStore } from '@/Stores/boardStore'
@@ -22,7 +22,7 @@ import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { usePieceStore } from '@/Stores/pieceStore'
 
 // Composables
-import { useSounds } from "@/Composables/useSounds.js"
+import { useSounds } from '@/Composables/useSounds.js'
 import { useNotifications } from '@/Composables/useNotifications.js'
 import { useGameEvents } from '@/Composables/useGameEvents.js'
 import { usePromotionDialog } from '@/Composables/usePromotionDialog.js'
