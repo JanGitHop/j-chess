@@ -6,17 +6,20 @@ Eine moderne, interaktive Schachplattform, entwickelt mit Laravel und Vue.js.
 
 ## Über das Projekt
 
-Dieses Projekt ist eine vollständige Schachplattform, die es Benutzern ermöglicht, Schach online zu spielen - entweder gegen andere Spieler in Echtzeit oder gegen verschiedene KI-Gegner. Die Anwendung nutzt moderne Webtechnologien für ein reaktionsschnelles und ansprechendes Spielerlebnis.
+Dieses Projekt ist ein Just-For-Fun-Projekt und soll eine vollständige Schachplattform werden, die es Benutzern ermöglicht,
+Schach online zu spielen, ob gegen andere Spieler in Echtzeit oder gegen verschiedene KI-Gegner.
 
 ### Hauptfunktionen
 
 - Interaktives Schachbrett mit Drag-and-Drop-Funktionalität
+- Analysetools, wie z.B. farbliches Markieren von Feldern, Zeichnen von Pfeilen
 - Vollständige Implementierung der Schachregeln
 - Multiplayer-Modus in Echtzeit
 - KI-Gegner mit verschiedenen Schwierigkeitsgraden
 - Spielanalyse und Zugvorschläge
 - Benutzerprofile und Ranglisten
 - Spielhistorie und PGN-Export
+- Training, wie z.B. Eröffnungen, Mittel- oder Endspiel
 
 ## Technologien
 
@@ -46,8 +49,8 @@ Dieses Projekt ist eine vollständige Schachplattform, die es Benutzern ermögli
 
 1. Repository klonen:
    ```bash
-   git clone https://github.com/yourusername/schach.git
-   cd schach
+   git clone https://github.com/JanGitHop/j-chess.git
+   cd j-chess
    ```
 
 2. Abhängigkeiten installieren:
@@ -94,7 +97,16 @@ Das Projekt verwendet Laravel Sail für eine Docker-basierte Entwicklungsumgebun
 
 ### Nützliche Befehle
 
-- Server starten: `./vendor/bin/sail up -d`
+Hilfreich wäre es, einen Alias zu erstellen:
+statt `./vendor/bin/sail` => sail
+
+Erstelle die aliases in Deiner .zshrc
+```bash
+alias sail='[ -f sail ] && bash sail || bash ./vendor/bin/sail'
+alias sailstart='sail up -d | sail npm run dev'
+```
+
+- Server starten: `./vendor/bin/sail up -d` oder `sail up -d`
 - Server stoppen: `./vendor/bin/sail down`
 - Composer-Befehle: `./vendor/bin/sail composer <command>`
 - Artisan-Befehle: `./vendor/bin/sail artisan <command>`
@@ -154,7 +166,7 @@ Die Entwicklung des Projekts ist in mehrere Phasen unterteilt:
 - Basis-Schachbrett (Vue-Komponente)
 - Einfache Spiellogik
 
-### Phase 2: Core Features (In Bearbeitung)
+### Phase 2: Core Features - Frontend (In Bearbeitung)
 - PvP-Spiele (lokal)
 - Grundlegende Schachregeln
 - Spielhistorie
@@ -173,16 +185,6 @@ Die Entwicklung des Projekts ist in mehrere Phasen unterteilt:
 - Analyse-Features
 
 Für eine detaillierte Liste der geplanten Aufgaben, siehe [docs/tasks.md](docs/tasks.md).
-
-## Mitwirken
-
-Beiträge zum Projekt sind willkommen! Bitte folgen Sie diesen Schritten:
-
-1. Fork des Repositories
-2. Feature-Branch erstellen (`git checkout -b feature/AmazingFeature`)
-3. Änderungen committen (`git commit -m 'Add some AmazingFeature'`)
-4. Branch pushen (`git push origin feature/AmazingFeature`)
-5. Pull Request erstellen
 
 ## Lizenz
 
