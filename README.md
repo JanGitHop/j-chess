@@ -9,17 +9,52 @@ Eine moderne, interaktive Schachplattform, entwickelt mit Laravel und Vue.js.
 Dieses Projekt ist ein Just-For-Fun-Projekt und soll eine vollständige Schachplattform werden, die es Benutzern ermöglicht,
 Schach online zu spielen, ob gegen andere Spieler in Echtzeit oder gegen verschiedene KI-Gegner.
 
-### Hauptfunktionen
+## Aktueller Status
 
-- Interaktives Schachbrett mit Drag-and-Drop-Funktionalität
-- Analysetools, wie z.B. farbliches Markieren von Feldern, Zeichnen von Pfeilen
-- Vollständige Implementierung der Schachregeln
-- Multiplayer-Modus in Echtzeit
-- KI-Gegner mit verschiedenen Schwierigkeitsgraden
-- Spielanalyse und Zugvorschläge
-- Benutzerprofile und Ranglisten
-- Spielhistorie und PGN-Export
-- Training, wie z.B. Eröffnungen, Mittel- oder Endspiel
+Das Projekt befindet sich in aktiver Entwicklung. Folgende Funktionen sind bereits implementiert:
+
+- ✅ Interaktives Schachbrett mit Drag-and-Drop-Funktionalität
+- ✅ Vollständige Implementierung der Schachregeln
+- ✅ Lokaler Mehrspielermodus (PvP auf demselben Gerät)
+- ✅ Analysetools (Pfeile zeichnen, Felder markieren)
+- ✅ Verschiedene Brettthemen und -größen
+- ✅ Zughistorie mit Notation
+
+Folgende Funktionen sind in Entwicklung:
+- 🚧 Responsive Darstellung
+- 🚧 KI-Gegner
+- 🚧 Online-Multiplayer
+- 🚧 Benutzerprofile und Authentifizierung
+- 🚧 Spielanalyse und Zugvorschläge
+
+## Hauptfunktionen
+
+### Spielmodi
+- **Lokaler PvP-Modus**: Spielen Sie gegen einen Freund auf demselben Gerät
+- **Analysemodus**: Analysieren Sie Stellungen und Züge mit Hilfe von Markierungen und Pfeilen
+
+### Spieloberfläche
+- **GameHeader**: Steuert die wichtigsten Spielfunktionen
+  - Spielmodus-Auswahl (Lokal PvP, Analyse)
+  - Brett drehen
+  - Themen- und Größeneinstellungen
+  - Audio-Einstellungen
+  - Neues Spiel starten
+  - Spielexport
+- **Schachbrett**: Interaktives Brett mit Drag-and-Drop-Funktionalität
+  - (Shift +) Alt + Klick + Ziehen: Pfeile zeichnen
+  - (Shift +) Alt + Klick auf ein Feld: Feld markieren
+  - `X` um Markierungen zu löschen
+  - Verschiedene Farben für Markierungen
+- **Zughistorie**: Zeigt alle gespielten Züge in Schachnotation
+- **Spielsteuerung**: Zurücksetzen, Züge zurücknehmen, etc.
+
+### Anpassungsoptionen
+- Verschiedene Brett-Themen
+- Einstellbare Brettgröße
+- Koordinatenanzeige ein-/ausschalten
+- Legale Züge anzeigen/ausblenden
+- Letzten Zug hervorheben
 
 ## Technologien
 
@@ -36,6 +71,27 @@ Schach online zu spielen, ob gegen andere Spieler in Echtzeit oder gegen verschi
 - Pinia (State Management)
 - Tailwind CSS
 - Vue-Draggable (für Schachfiguren)
+
+## Benutzerhinweise
+
+### Spielsteuerung
+1. **Spielmodus wählen**: Über den GameHeader können Sie zwischen "Lokal PvP" und "Analyse" wählen
+2. **Neues Spiel starten**: Klicken Sie auf das Menü-Symbol und wählen Sie "Neues Spiel"
+3. **Figuren bewegen**: Drag & Drop der Figuren auf legale Felder
+4. **Brett drehen**: Klicken Sie auf den "Brett drehen" Button im GameHeader
+5. **Automatisches Brett drehen**: Aktiviere Auto-Reverse im GameHeader
+6. **Züge zurücknehmen**: Nutzen Sie die Spielsteuerung am unteren Rand
+
+### Analysetools
+1. **Pfeile zeichnen**: Rechtsklick auf ein Startfeld, halten und zum Zielfeld ziehen
+2. **Felder markieren**: Rechtsklick auf ein Feld
+3. **Farbe ändern**: Verwenden Sie die Farbauswahl in der Werkzeugleiste
+4. **Markierungen löschen**: Klicken Sie auf den "Löschen" Button in der Werkzeugleiste
+
+### Anpassungen
+1. **Thema ändern**: Öffnen Sie das Themen-Dropdown im GameHeader
+2. **Brettgröße ändern**: Wählen Sie eine Größe aus dem Größen-Dropdown
+3. **Einstellungen anpassen**: Nutzen Sie das Einstellungen-Dropdown für weitere Optionen
 
 ## Installation
 
@@ -161,24 +217,25 @@ Schach/
 
 Die Entwicklung des Projekts ist in mehrere Phasen unterteilt:
 
-### Phase 1: Grundgerüst ✓
+### Phase 1: Grundgerüst ✅
 - Laravel + Inertia.js Setup
 - Basis-Schachbrett (Vue-Komponente)
 - Einfache Spiellogik
 
-### Phase 2: Core Features - Frontend (In Bearbeitung)
-- PvP-Spiele (lokal)
-- Grundlegende Schachregeln
-- Spielhistorie
-- Profil-Management
+### Phase 2: Core Features ⏳
+- PvP-Spiele (lokal) ✅
+- Grundlegende Schachregeln ✅
+- Analysetools (Pfeile, Markierungen) ✅
+- Spielhistorie ✅
+- Profil-Management 🚧
 
-### Phase 3: Multiplayer (Geplant)
+### Phase 3: Multiplayer 🔜
 - WebSocket-Integration
 - Live-Spiele zwischen Benutzern
 - Lobby-System
 - Spectator-Modus
 
-### Phase 4: Engine-Integration (Geplant)
+### Phase 4: Engine-Integration 🔜
 - Stockfish-Integration
 - Engine-Management-System
 - Verschiedene Schwierigkeitsgrade
