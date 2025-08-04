@@ -918,7 +918,7 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 1.5rem;
     transition: all 300ms ease;
-    margin-left: 1rem;
+    padding-top: 0;
 }
 
 .sidebar--collapsed {
