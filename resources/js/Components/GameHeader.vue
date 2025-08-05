@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { useBoardStore } from '@/Stores/boardStore.js'
 import { useSounds } from '@/Composables/useSounds.js'
@@ -84,18 +84,6 @@ const closeAllDropdowns = () => {
     showSettingsDropdown.value = false
 }
 
-// Verfügbare Spielmodi
-const availableGameModes = computed(() => [
-    { id: 'local-pvp', name: 'Lokal PvP', icon: '👥', description: 'Zwei Spieler am selben Gerät' },
-    { id: 'vs-ai', name: 'vs KI', icon: '🤖', disabled: true, description: 'Gegen Computer (in Entwicklung)' },
-    { id: 'analysis', name: 'Analyse', icon: '🔍', description: 'Stellungsanalyse' }
-])
-
-// Aktueller Spielmodus
-const currentGameMode = computed(() =>
-    availableGameModes.value.find(mode => mode.id === configStore.gameMode) || availableGameModes.value[0]
-)
-
 // Theme-Liste aus Board Store
 const availableThemes = computed(() => boardStore.themeList)
 const currentTheme = computed(() => boardStore.currentTheme)
@@ -105,15 +93,6 @@ const availableBoardSizes = computed(() => boardStore.boardSizeList)
 const currentBoardSize = computed(() => boardStore.currentBoardSize)
 
 // ===== EVENT HANDLERS =====
-
-// Spielmodus
-const selectGameMode = (modeId) => {
-    if (availableGameModes.value.find(mode => mode.id === modeId)?.disabled) return
-
-    configStore.setGameMode(modeId)
-    showModeDropdown.value = false
-    emit('game-mode-changed', modeId)
-}
 
 // Brett-Steuerung
 const handleFlipBoard = () => {
@@ -221,36 +200,28 @@ const handleExportGame = () => {
 
             <!-- Hauptmenü -->
             <nav class="header-nav">
-                <!-- Spielmodus Dropdown -->
-                <div class="nav-item dropdown" :class="{ 'dropdown--open': showModeDropdown }">
+                <!-- Spiel-Menü -->
+                <div class="nav-item dropdown" :class="{ 'dropdown--open': showGameMenu }">
                     <button
                         class="dropdown-btn nav-btn"
-                        @click="showModeDropdown = !showModeDropdown"
-                        @blur="closeModeDropdownDelayed"
+                        @click="showGameMenu = !showGameMenu"
+                        @blur="closeGameMenuDelayed"
                     >
-                        <span class="btn-icon">{{ currentGameMode.icon }}</span>
-                        <span class="btn-text text-theme-secondary">{{ currentGameMode.name }}</span>
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-text text-theme-secondary">Spiel</span>
                         <svg class="dropdown-icon" viewBox="0 0 20 20">
                             <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                         </svg>
                     </button>
 
-                    <div v-if="showModeDropdown" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
-                        <button
-                            v-for="mode in availableGameModes"
-                            :key="mode.id"
-                            class="dropdown-item hover:bg-theme-surface-secondary"
-                            :class="{
-                                'dropdown-item--active': mode.id === configStore.gameMode,
-                                'dropdown-item--disabled': mode.disabled
-                            }"
-                            @click="selectGameMode(mode.id)"
-                        >
-                            <span class="dropdown-item-icon">{{ mode.icon }}</span>
-                            <div class="dropdown-item-content">
-                                <span class="dropdown-item-name text-theme-primary">{{ mode.name }}</span>
-                                <span class="dropdown-item-desc text-theme-secondary">{{ mode.description }}</span>
-                            </div>
+                    <div v-if="showGameMenu" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
+                        <button class="dropdown-item hover:bg-theme-surface-secondary" @click="handleNewGame">
+                            <span class="dropdown-item-icon">🆕</span>
+                            <span class="dropdown-item-name text-theme-primary">Neues Spiel</span>
+                        </button>
+                        <button class="dropdown-item hover:bg-theme-surface-secondary" @click="handleExportGame">
+                            <span class="dropdown-item-icon">💾</span>
+                            <span class="dropdown-item-name text-theme-primary">Spiel exportieren</span>
                         </button>
                     </div>
                 </div>
@@ -454,31 +425,6 @@ const handleExportGame = () => {
                     </label>
                 </div>
 
-                <!-- Spiel-Menü -->
-                <div class="nav-item dropdown" :class="{ 'dropdown--open': showGameMenu }">
-                    <button
-                        class="dropdown-btn nav-btn"
-                        @click="showGameMenu = !showGameMenu"
-                        @blur="closeGameMenuDelayed"
-                    >
-                        <span class="btn-icon">⚡</span>
-                        <span class="btn-text text-theme-secondary">Spiel</span>
-                        <svg class="dropdown-icon" viewBox="0 0 20 20">
-                            <path fill="currentColor" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                        </svg>
-                    </button>
-
-                    <div v-if="showGameMenu" class="dropdown-menu bg-theme-surface border border-theme shadow-lg">
-                        <button class="dropdown-item hover:bg-theme-surface-secondary" @click="handleNewGame">
-                            <span class="dropdown-item-icon">🆕</span>
-                            <span class="dropdown-item-name text-theme-primary">Neues Spiel</span>
-                        </button>
-                        <button class="dropdown-item hover:bg-theme-surface-secondary" @click="handleExportGame">
-                            <span class="dropdown-item-icon">💾</span>
-                            <span class="dropdown-item-name text-theme-primary">Spiel exportieren</span>
-                        </button>
-                    </div>
-                </div>
             </nav>
 
             <!-- Rechte Seite -->
@@ -536,7 +482,7 @@ const handleExportGame = () => {
 .game-header {
     grid-area: header;
     backdrop-filter: blur(10px);
-    padding: 0rem 0.1rem;
+    padding: 0 0.1rem;
     position: relative;
     z-index: 30;
     justify-self: stretch;
@@ -554,19 +500,6 @@ const handleExportGame = () => {
     box-sizing: border-box;
     justify-content: space-between;
     min-width: 0;
-}
-
-/* Brand */
-.header-brand {
-    margin-right: 2rem;
-}
-
-.game-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
-    letter-spacing: -0.025em;
 }
 
 /* Navigation */
@@ -692,11 +625,6 @@ const handleExportGame = () => {
 .dropdown-item--active {
     background: rgba(59, 130, 246, 0.1);
     color: #2563eb;
-}
-
-.dropdown-item--disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .dropdown-item-icon {
@@ -1008,14 +936,6 @@ const handleExportGame = () => {
 
     .header-actions {
         margin-left: 0;
-    }
-
-    .header-brand {
-        margin-right: 1rem;
-    }
-
-    .game-title {
-        font-size: 1.25rem;
     }
 
     .header-nav {
