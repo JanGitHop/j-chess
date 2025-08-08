@@ -2,8 +2,10 @@
 import { ref, computed } from 'vue'
 import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { useBoardStore } from '@/Stores/boardStore.js'
+import { useGameStore } from '@/Stores/gameStore.js'
 import { useSounds } from '@/Composables/useSounds.js'
 import NewGameModal from '@/Components/NewGameModal.vue'
+import { PLAYER_COLORS } from '@/Utils/chessConstants.js'
 
 const props = defineProps({
     gameTitle: {
@@ -21,6 +23,10 @@ const props = defineProps({
     showBoardInfo: {
         type: Boolean,
         default: false
+    },
+    gameState: {
+        type: Object,
+        default: () => ({})
     }
 })
 
@@ -31,12 +37,53 @@ const emit = defineEmits([
     'toggle-board-info',
     'open-settings',
     'new-game',
-    'export-game'
+    'export-game',
+    'resign',
+    'offer-draw',
+    'undo-move',
+    'redo-move'
 ])
 
 // Stores
 const configStore = useGameConfigStore()
 const boardStore = useBoardStore()
+const gameStore = useGameStore()
+
+// Game state computed properties
+const currentPlayerName = computed(() => {
+    return gameStore.currentPlayer === PLAYER_COLORS.WHITE ? 'Weiß' : 'Schwarz'
+})
+
+const gameStatus = computed(() => {
+    if (!gameStore.isGameActive) {
+        if (gameStore.gameResult) {
+            return `Spiel beendet: ${gameStore.gameResult.reason}`
+        }
+        return 'Kein aktives Spiel'
+    }
+
+    if (gameStore.isInCheck) {
+        return `${gameStore.currentPlayer === PLAYER_COLORS.WHITE ? 'Weiß' : 'Schwarz'} steht im Schach`
+    }
+
+    return `${gameStore.currentPlayer === PLAYER_COLORS.WHITE ? 'Weiß' : 'Schwarz'} ist am Zug`
+})
+
+const moveCount = computed(() => {
+    return Math.ceil(gameStore.moveHistory?.length / 2) || 0
+})
+
+const canUndo = computed(() => {
+    return gameStore.canStepBackward
+})
+
+const canRedo = computed(() => {
+    return gameStore.canStepForward
+})
+
+// Game control state
+const showConfirmResign = ref(false)
+const showDrawOffer = ref(false)
 
 // Sound Composable
 const {
@@ -54,6 +101,7 @@ const showThemeDropdown = ref(false)
 const showAudioDropdown = ref(false)
 const showSettingsDropdown = ref(false)
 const showNewGameModal = ref(false)
+const showMobileMenu = ref(false)
 
 // ===== DROPDOWN MANAGEMENT =====
 const closeModeDropdownDelayed = () => {
@@ -82,6 +130,7 @@ const closeAllDropdowns = () => {
     showThemeDropdown.value = false
     showAudioDropdown.value = false
     showSettingsDropdown.value = false
+    showMobileMenu.value = false
 }
 
 // Theme-Liste aus Board Store
@@ -186,20 +235,75 @@ const handleExportGame = () => {
     showGameMenu.value = false
     emit('export-game')
 }
+
+// Game control functions
+const handleResign = () => {
+    if (showConfirmResign.value) {
+        gameStore.resignGame()
+        showConfirmResign.value = false
+        emit('resign')
+    } else {
+        showConfirmResign.value = true
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            showConfirmResign.value = false
+        }, 3000)
+    }
+}
+
+const handleOfferDraw = () => {
+    showDrawOffer.value = true
+    emit('offer-draw')
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        showDrawOffer.value = false
+    }, 3000)
+}
+
+const handleUndo = () => {
+    if (canUndo.value) {
+        const success = gameStore.undoLastMove()
+        if (success) {
+            emit('undo-move')
+        }
+    }
+}
+
+const handleRedo = () => {
+    if (canRedo.value) {
+        const success = gameStore.redoMove()
+        if (success) {
+            emit('redo-move')
+        }
+    }
+}
 </script>
 
 <template>
-    <header class="game-header bg-theme-surface border-b border-theme">
+    <header class="game-header bg-theme-surface border-b border-theme" tabindex="-1">
         <div class="header-content">
             <!-- Logo -->
             <div class="flex items-center">
                 <a href="/" class="font-bold mr-5 flex items-center gap-2">
-                    <img src="images/logo.png" alt="J-Chess Logo" class="w-20 h-20" />
+                    <img src="images/logo.png" alt="J-Chess Logo" class="w-20 h-20 logo-image" />
                 </a>
             </div>
 
+            <!-- Mobile Menu Button -->
+            <button
+                class="mobile-menu-button"
+                @click="showMobileMenu = !showMobileMenu"
+                aria-label="Toggle menu"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path v-if="!showMobileMenu" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
             <!-- Hauptmenü -->
-            <nav class="header-nav">
+            <nav class="header-nav" :class="{ 'header-nav--mobile-open': showMobileMenu }">
                 <!-- Spiel-Menü -->
                 <div class="nav-item dropdown" :class="{ 'dropdown--open': showGameMenu }">
                     <button
@@ -427,15 +531,76 @@ const handleExportGame = () => {
 
             </nav>
 
+            <!-- Game Info and Controls -->
+            <div class="game-info-controls">
+
+                <!-- Game Controls -->
+                <div class="game-controls">
+                    <!-- Move Navigation -->
+                    <div class="move-navigation">
+                        <button
+                            @click="handleUndo"
+                            :disabled="!canUndo"
+                            class="nav-control-btn"
+                            :class="{ 'btn-disabled': !canUndo }"
+                            title="Zug zurücknehmen"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                            </svg>
+                        </button>
+
+                        <button
+                            @click="handleRedo"
+                            :disabled="!canRedo"
+                            class="nav-control-btn"
+                            :class="{ 'btn-disabled': !canRedo }"
+                            title="Zug wiederholen"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Game Actions -->
+                    <div class="game-actions">
+                        <button
+                            v-if="gameStore.isGameActive"
+                            @click="handleOfferDraw"
+                            class="action-control-btn draw-btn"
+                            :disabled="showDrawOffer"
+                            :class="{ 'btn-disabled': showDrawOffer }"
+                            title="Remis anbieten"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                            </svg>
+<!--
+                            <span class="btn-text">{{ showDrawOffer ? 'Angeboten' : 'Remis' }}</span>
+-->
+                        </button>
+
+                        <button
+                            v-if="gameStore.isGameActive"
+                            @click="handleResign"
+                            class="action-control-btn resign-btn"
+                            :class="{ 'confirm-btn': showConfirmResign }"
+                            title="Aufgeben"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path>
+                            </svg>
+<!--
+                            <span class="btn-text">{{ showConfirmResign ? 'Bestätigen?' : 'Aufgeben' }}</span>
+-->
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Rechte Seite -->
             <div class="header-actions">
-                <!-- Brett-Orientierung Status -->
-                <div class="status-indicator">
-                    <span class="status-text text-theme-secondary">
-                        {{ configStore.boardOrientation === 'white' ? 'Weiß unten' : 'Schwarz unten' }}
-                    </span>
-                </div>
-
                 <!-- Sidebar Toggle -->
                 <button
                     v-if="showSidebarToggle"
@@ -490,6 +655,8 @@ const handleExportGame = () => {
     min-width: 1300px;
     max-width: 100vw;
     box-sizing: border-box;
+    overflow: visible;
+    margin: 0;
 }
 
 .header-content {
@@ -889,6 +1056,193 @@ const handleExportGame = () => {
     height: 1.125rem;
 }
 
+/* Game Info and Controls */
+.game-info-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    flex: 1;
+}
+
+.game-status-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+}
+
+.status-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.status-check {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    animation: pulse 1.5s infinite;
+}
+
+.status-finished {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.status-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-active .status-indicator-dot {
+    animation: pulse 2s infinite;
+}
+
+.move-counter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.375rem;
+    color: #3b82f6;
+}
+
+.move-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.move-number {
+    font-weight: 600;
+}
+
+.game-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+}
+
+.move-navigation {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.nav-control-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.375rem;
+    background: rgba(0, 0, 0, 0.05);
+    color: #4b5563;
+    transition: all 0.2s ease;
+}
+
+.nav-control-btn:hover:not(.btn-disabled) {
+    background: rgba(0, 0, 0, 0.1);
+    color: #1f2937;
+}
+
+.btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.game-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.action-control-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.draw-btn {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.draw-btn:hover:not(.btn-disabled) {
+    background: rgba(107, 114, 128, 0.2);
+    color: #4b5563;
+}
+
+.resign-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.resign-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.confirm-btn {
+    background: #ef4444;
+    color: white;
+    animation: pulse 1.5s infinite;
+}
+
+.confirm-btn:hover {
+    background: #dc2626;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Responsive Game Info and Controls */
+@media (max-width: 1024px) {
+    .game-info-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+    }
+
+    .game-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .btn-text {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .game-info-controls {
+        display: none;
+    }
+}
+
 /* Dropdown Overlay */
 .dropdown-overlay {
     position: fixed;
@@ -899,7 +1253,35 @@ const handleExportGame = () => {
     z-index: 150;
 }
 
+/* Mobile Menu Button */
+.mobile-menu-button {
+    display: none;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 200ms ease;
+}
+
+.mobile-menu-button:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #374151;
+}
+
 /* Responsive */
+@media (max-width: 1300px) {
+    .game-header {
+        min-width: auto;
+    }
+
+    .logo-image {
+        width: 4rem;
+        height: 4rem;
+    }
+}
+
 @media (max-width: 1024px) {
     .header-content {
         padding: 0.75rem 1rem;
@@ -925,6 +1307,71 @@ const handleExportGame = () => {
         right: 0;
         left: auto;
     }
+
+    .logo-image {
+        width: 3.5rem;
+        height: 3.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+
+    .header-content {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .header-nav {
+        display: none;
+    }
+
+    .header-nav--mobile-open {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+        position: fixed;
+        top: 70px; /* Höhe des Headers anpassen */
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-top: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        gap: 1rem;
+    }
+
+    .nav-item {
+        width: 100%;
+    }
+
+    .dropdown-btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .btn-text {
+        display: inline;
+    }
+
+    .dropdown-menu {
+        position: static;
+        width: 100%;
+        box-shadow: none;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .logo-image {
+        width: 3rem;
+        height: 3rem;
+    }
 }
 
 @media (max-width: 640px) {
@@ -938,20 +1385,13 @@ const handleExportGame = () => {
         margin-left: 0;
     }
 
-    .header-nav {
-        gap: 0.5rem;
-        order: 3;
-        width: 100%;
-        justify-content: space-between;
-    }
-
     .status-indicator {
         display: none;
     }
 
-    .dropdown-menu {
-        right: 0;
-        left: auto;
+    .logo-image {
+        width: 2.5rem;
+        height: 2.5rem;
     }
 }
 </style>

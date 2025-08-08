@@ -125,13 +125,37 @@ const jumpToCurrentPosition = () => {
 const scrollToMove = async (moveIndex) => {
     await nextTick()
 
-    if (!historyContainer.value) return
+    if (!historyContainer.value || historyContainer.value.offsetParent === null) return
 
     const moveElement = historyContainer.value.querySelector(`[data-move-index="${moveIndex}"]`)
-    if (moveElement) {
-        moveElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
+    if (!moveElement) return
+
+    const containerScrollTop = historyContainer.value.scrollTop
+    const containerHeight = historyContainer.value.clientHeight
+    const containerScrollBottom = containerScrollTop + containerHeight
+
+    const elementOffsetTop = moveElement.offsetTop
+    const elementHeight = moveElement.offsetHeight
+    const elementOffsetBottom = elementOffsetTop + elementHeight
+
+    const isElementVisible = (
+        elementOffsetTop >= containerScrollTop &&
+        elementOffsetBottom <= containerScrollBottom
+    )
+
+    if (!isElementVisible) {
+        // Set focus on the header (prevents scroll-to-element)
+        const gameHeader = document.querySelector('.game-header')
+        if (gameHeader) {
+            gameHeader.focus({ preventScroll: true })
+        }
+
+        // calculate and set the scroll position directly
+        const targetScrollTop = elementOffsetTop - (containerHeight / 2) + (elementHeight / 2)
+
+        historyContainer.value.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: 'smooth'
         })
     }
 }
@@ -212,8 +236,6 @@ watch(
     <div class="move-history">
         <!-- Header -->
         <div class="move-history__header">
-            <h3 class="text-lg font-semibold text-theme-secondary">Zughistorie</h3>
-
             <div class="move-history__controls">
                 <button
                     v-if="hasHistory"

@@ -20,6 +20,7 @@
         "@inertiajs/vue3": "^2.0.12",
         "@vitejs/plugin-vue": "^5.2.4",
         "pinia": "^2.3.1",
+        "stockfish.js": "^10.0.2",
         "vue": "^3.5.16"
     }
 }

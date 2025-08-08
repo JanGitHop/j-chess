@@ -507,6 +507,7 @@ onUnmounted(() => {
                 :show-settings="true"
                 :show-sidebar-toggle="true"
                 :show-board-info="showBoardInfo"
+                :game-state="gameState"
                 @flip-board="handleFlipBoard"
                 @game-mode-changed="handleGameModeChanged"
                 @toggle-sidebar="toggleSidebar"
@@ -514,6 +515,10 @@ onUnmounted(() => {
                 @open-settings="openSettings"
                 @new-game="handleNewGameFromHeader"
                 @export-game="handleExportGame"
+                @resign="handleResignGame"
+                @offer-draw="handleOfferDraw"
+                @undo-move="handleUndoMove"
+                @redo-move="handleRedoMove"
             />
 
             <!-- Notifications -->
@@ -621,21 +626,8 @@ onUnmounted(() => {
                 <!-- Sidebar -->
                 <GameSidebar
                     :collapsed="sidebarCollapsed"
-                    :game-state="gameState"
-                    :time-control="props.timeControl"
-                    :player-color="props.playerColor"
-                    :game-mode="props.gameMode"
                     :move-history="gameStore.moveHistory"
                     :current-move-index="gameStore.currentMoveIndex"
-                    :show-player-info="showPlayerInfo"
-                    :show-game-controls="showGameControls"
-                    :show-move-history="showMoveHistory"
-                    :show-board-info="showBoardInfo"
-                    @new-game="handleNewGame"
-                    @undo-move="handleUndoMove"
-                    @redo-move="handleRedoMove"
-                    @resign="handleResignGame"
-                    @offer-draw="handleOfferDraw"
                     @goto-move="gameStore.gotoMove"
                 />
             </main>
@@ -898,6 +890,11 @@ onUnmounted(() => {
     display: flex;
 }
 
+.middle-element {
+    display: flex;
+    justify-content: center;
+}
+
 .right-element {
     display: flex;
 }
@@ -992,15 +989,56 @@ onUnmounted(() => {
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
+@media (max-width: 1300px) {
+    .game-layout {
+        grid-template-areas:
+            "header header"
+            "main main"
+            "sidebar sidebar";
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns: 1fr;
+    }
+
     .game-main {
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
     }
 
     .game-sidebar {
         width: 100%;
         max-width: 600px;
+        margin: 1rem 0 0 0;
+        border-left: none;
+        align-self: flex-start;
+    }
+
+    .board-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 1024px) {
+    .game-main {
+        flex-direction: column;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .board-area {
+        max-width: 550px;
+    }
+
+    .game-sidebar {
+        width: 100%;
+        max-width: 550px;
     }
 
     .notifications-container {
@@ -1018,12 +1056,93 @@ onUnmounted(() => {
             "sidebar";
         grid-template-rows: auto 1fr auto;
         grid-template-columns: 1fr;
+        margin: 0;
+    }
+
+    .game-main {
+        padding: 0.5rem;
+    }
+
+    .board-area {
+        max-width: 480px;
+        padding: 0;
+    }
+
+    .left-element,
+    .right-element {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+    }
+
+    .middle-element {
+        width: 120px;
+        min-width: 120px;
+        justify-content: center;
     }
 
     .game-sidebar {
         border-left: none;
-        border-top: 1px solid #e2e8f0;
-        max-height: 200px;
+        max-height: none; /* Allow sidebar to expand to full viewport height */
+    }
+}
+
+@media (max-width: 480px) {
+    .game-main {
+        padding: 0.25rem;
+    }
+
+    .board-area {
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .board-top-row {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .board-top-row .middle-element {
+        order: -1;
+        width: 100%;
+        min-width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .board-top-row .left-element,
+    .board-top-row .right-element {
+        width: 50%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .board-bottom-row {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .board-bottom-row .middle-element {
+        order: 1;
+        width: 100%;
+        min-width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .board-bottom-row .left-element,
+    .board-bottom-row .right-element {
+        width: 50%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .annotated-chess-board-container,
+    .chess-board-container {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .game-sidebar {
+        margin-top: 5rem;
     }
 }
 
