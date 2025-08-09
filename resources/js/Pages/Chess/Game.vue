@@ -4,12 +4,8 @@ import { Head } from '@inertiajs/vue3'
 import AnnotatedChessBoard from '@/Components/Chess/AnnotatedChessBoard.vue'
 import BoardSettings from '@/Components/Chess/BoardSettings.vue'
 import GameSidebar from '@/Components/Chess/GameSidebar.vue'
-import MoveHistory from '@/Components/Chess/MoveHistory.vue'
-import GameControls from '@/Components/Chess/GameControls.vue'
-import GameInfo from '@/Components/Chess/GameInfo.vue'
 import CapturedPieces from '@/Components/Chess/CapturedPieces.vue'
 import PromotionModal from '@/Components/Chess/PromotionModal.vue'
-import BoardInfo from '@/Components/Chess/BoardInfo.vue'
 import GameHeader from '@/Components/Chess/GameHeader.vue'
 import ChessTimer from '@/Components/Chess/ChessTimer.vue'
 import PlayerCard from '@/Components/Chess/PlayerCard.vue'
@@ -31,7 +27,6 @@ import { useKeyboardShortcuts } from '@/Composables/useKeyboardShortcuts.js'
 // Constants
 import {
     GAME_MODES,
-    GAME_STATUS as GAME_STATUSES,
     PLAYER_COLORS
 } from '@/Utils/chessConstants.js'
 
