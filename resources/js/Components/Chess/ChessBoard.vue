@@ -9,8 +9,8 @@ import {useDragAndDrop} from '@/Composables/useDragAndDrop.js'
 import {useAnnotationKeyboard} from '@/Composables/useAnnotationKeyboard.js'
 import {useAnnotationMouse} from '@/Composables/useAnnotationMouse.js'
 import {squareToIndices, isLightSquare, getCSSPattern } from '@/Utils/chessUtils.js'
-import ChessPiece from '@/Components/ChessPiece.vue'
-import AnnotationOverlay from '@/Components/AnnotationOverlay.vue'
+import ChessPiece from '@/Components/Chess/ChessPiece.vue'
+import AnnotationOverlay from '@/Components/Chess/AnnotationOverlay.vue'
 import {GAME_MODES} from "@/Utils/chessConstants.js";
 import {ANNOTATION_COLORS} from "@/Utils/annotationConstants.js";
 

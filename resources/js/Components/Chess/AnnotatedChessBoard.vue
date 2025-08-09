@@ -1,10 +1,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import ChessBoard from '@/Components/ChessBoard.vue'
-import AnnotationOverlay from '@/Components/AnnotationOverlay.vue'
-import { useAnnotationStore } from '@/Stores/annotationStore'
-import { useAnnotationKeyboard } from '@/Composables/useAnnotationKeyboard'
-import { ANNOTATION_COLORS } from '@/Utils/annotationConstants'
+import ChessBoard from '@/Components/Chess/ChessBoard.vue'
+import AnnotationOverlay from '@/Components/Chess/AnnotationOverlay.vue'
+import { useAnnotationStore } from '@/Stores/annotationStore.js'
+import { useAnnotationKeyboard } from '@/Composables/useAnnotationKeyboard.js'
+import { ANNOTATION_COLORS } from '@/Utils/annotationConstants.js'
 
 // Props (pass through to ChessBoard)
 const props = defineProps({

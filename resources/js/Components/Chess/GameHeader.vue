@@ -4,7 +4,7 @@ import { useGameConfigStore } from '@/Stores/gameConfigStore.js'
 import { useBoardStore } from '@/Stores/boardStore.js'
 import { useGameStore } from '@/Stores/gameStore.js'
 import { useSounds } from '@/Composables/useSounds.js'
-import NewGameModal from '@/Components/NewGameModal.vue'
+import NewGameModal from '@/Components/Shared/NewGameModal.vue'
 import { PLAYER_COLORS } from '@/Utils/chessConstants.js'
 
 const props = defineProps({

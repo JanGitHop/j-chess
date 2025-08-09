@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { usePieceStore } from '@/Stores/pieceStore'
+import { usePieceStore } from '@/Stores/pieceStore.js'
 
 const props = defineProps({
     playerColor: {

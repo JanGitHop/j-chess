@@ -1,7 +1,7 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import Navigation from '../../Components/Navigation.vue'
+import Navigation from '../../Components/Layout/Navigation.vue'
 
 const props = defineProps({
     user: Object

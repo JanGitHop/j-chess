@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue'
-import { useAnnotationStore } from '@/Stores/annotationStore'
-import { ANNOTATION_TYPES, ANNOTATION_OPACITY, ARROW_STYLE } from '@/Utils/annotationConstants'
-import { squareToCoordinates, squareToIndices } from '@/Utils/chessUtils'
+import { useAnnotationStore } from '@/Stores/annotationStore.js'
+import { ANNOTATION_TYPES, ANNOTATION_OPACITY, ARROW_STYLE } from '@/Utils/annotationConstants.js'
+import { squareToCoordinates, squareToIndices } from '@/Utils/chessUtils.js'
 
 const props = defineProps({
     boardSize: {

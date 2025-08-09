@@ -1,5 +1,5 @@
 <script setup>
-import MoveHistory from '@/Components/MoveHistory.vue'
+import MoveHistory from '@/Components/Chess/MoveHistory.vue'
 
 // Props
 defineProps({

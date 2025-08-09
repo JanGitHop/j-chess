@@ -1,5 +1,5 @@
 <script setup>
-import Navigation from '@/Components/Navigation.vue'
+import Navigation from '@/Components/Layout/Navigation.vue'
 import { Link } from '@inertiajs/vue3'
 
 console.log('Dashboard loaded');

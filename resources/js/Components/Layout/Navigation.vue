@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { usePage, router } from '@inertiajs/vue3'
-import ThemeSwitcher from '@/Components/ThemeSwitcher.vue'
+import ThemeSwitcher from '@/Components/UI/ThemeSwitcher.vue'
 
 // Responsive Menu Toggle
 const mobileMenuOpen = ref(false)
@@ -26,14 +26,14 @@ const logout = () => {
             <div class="flex justify-between items-center py-4">
                 <!-- Logo -->
                 <div class="flex items-center">
-                    <a href="/" class="text-2xl font-bold text-theme-primary">
+                    <a href="/public" class="text-2xl font-bold text-theme-primary">
                         ♛ J-Chess
                     </a>
                 </div>
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex space-x-6">
-                    <a href="/" class="text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md transition">
+                    <a href="/public" class="text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md transition">
                         Start
                     </a>
                     <a href="/chess" class="text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md transition">
@@ -80,7 +80,7 @@ const logout = () => {
 
             <!-- Mobile Navigation -->
             <div v-show="mobileMenuOpen" class="md:hidden border-t border-theme pt-4 pb-3 space-y-2">
-                <a href="/" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Start</a>
+                <a href="/public" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Start</a>
                 <a href="/chess" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Spielen</a>
                 <a href="/leaderboard" class="block text-theme-secondary hover:text-theme-primary px-3 py-2 rounded-md">Rangliste</a>
 
